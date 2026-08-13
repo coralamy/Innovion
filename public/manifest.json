@@ -1,0 +1,29 @@
+{
+    "name": "Innovion",
+    "short_name": "Innovion",
+    "description": "intelligent Micro Business Operations Management — schedule contractors, manage compliance, track jobs in real time.",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#0F1C2E",
+    "theme_color": "#0F1C2E",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "/assets/images/Favicon-1786073542962.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any maskable"
+        },
+        {
+            "src": "/assets/images/Favicon-1786073542962.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any maskable"
+        }
+    ],
+    "categories": [
+        "business",
+        "productivity"
+    ],
+    "lang": "en"
+}
