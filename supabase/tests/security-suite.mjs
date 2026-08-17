@@ -1020,6 +1020,143 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  group('L. VERSION 106 AUDIT FINDINGS — direct reconciliation');
+  // Each assertion below restates a finding from the frozen Version 106
+  // production-readiness and penetration-test reports, so the reconciliation in
+  // the completion report is reproducible rather than asserted.
+
+  {
+    // C-01 — public.settings policy uses TO public, permitting anonymous access.
+    const rows = await q(`select policyname, roles::text, qual from pg_policies
+                          where schemaname='public' and tablename='settings'`);
+    const anonExposed = rows.filter((r) => r.roles.includes('public') || r.roles.includes('anon'));
+    check(
+      'C-01: public.settings is not exposed to the anonymous role',
+      anonExposed.length === 0,
+      anonExposed.map((r) => r.policyname).join(', ')
+    );
+
+    const seen = await countAs('anon', null, 'settings', 'true');
+    check('C-01: anon reads public.settings', seen === 0, `saw ${seen}`);
+  }
+  {
+    // H-01 — notifications INSERT permitted a null company_id.
+    const rows = await q(`select policyname from pg_policies
+                          where schemaname='public' and tablename='notifications'
+                            and coalesce(with_check,'') like '%company_id IS NULL%'`);
+    check(
+      'H-01: notifications INSERT no longer admits a NULL company_id',
+      rows.length === 0,
+      rows.map((r) => r.policyname).join(', ')
+    );
+
+    const r = await tryAsRole(
+      db,
+      'authenticated',
+      claims(ATTACKER),
+      `insert into public.notifications(company_id,title) values (null,'injected') returning id`
+    );
+    check(
+      'H-01: cross-tenant notification injection via NULL tenant',
+      !!r.error,
+      r.error ? 'denied' : 'ROW CREATED'
+    );
+  }
+  {
+    // H-02 / SEC-M-01 / EDR-014 — storage bucket had no company path isolation.
+    // The Version 106 assessment recorded this as "NO — application layer
+    // enforcement is in place". Section F demonstrates that application-layer
+    // path construction was not enforcement.
+    const rows = await q(`select policyname from pg_policies
+                          where schemaname='storage' and policyname like 'documents_%'
+                            and coalesce(qual, with_check, '') not like '%innovion_storage_tenant%'`);
+    check(
+      'H-02 / SEC-M-01: every documents-bucket policy carries a tenant predicate',
+      rows.length === 0,
+      rows.map((r) => r.policyname).join(', ')
+    );
+  }
+  {
+    // H-03 — activity_log INSERT did not enforce company_id.
+    const r = await tryAsRole(
+      db,
+      'authenticated',
+      claims(ATTACKER),
+      `insert into public.activity_log(user_id,company_id,action,entity_type,description)
+         values ('${ATTACKER}','${CA}','job_created','job','audit trail pollution') returning id`
+    );
+    check(
+      'H-03: audit-trail pollution into a foreign tenant',
+      !!r.error,
+      r.error ? 'denied' : 'ROW CREATED'
+    );
+  }
+  {
+    // H-04 / SEC-H-01 — viewer could modify their own role.
+    // Asserted in section C; restated here under its audit identifier.
+    const r = await tryAsRole(
+      db,
+      'authenticated',
+      claims(ATTACKER),
+      `with u as (update public.user_roles set role='admin' where user_id='${ATTACKER}' returning 1)
+       select count(*)::int c from u`
+    );
+    check(
+      'H-04 / SEC-H-01: viewer escalates own role',
+      r.error ? true : r.rows[0].c === 0,
+      r.error ? 'denied' : `${r.rows[0].c} rows`
+    );
+  }
+  {
+    // H-05 / SEC-H-02 — any member could create Platform API keys.
+    const r = await tryAsRole(
+      db,
+      'authenticated',
+      HONEST_VIEWER_A,
+      `insert into public.platform_api_keys(company_id,key_hash,key_prefix,label)
+         values ('${CA}','VIEWER-MINTED-KEY','wf_live_','minted by a viewer') returning id`
+    );
+    check(
+      'H-05 / SEC-H-02: a viewer mints a Platform API key',
+      !!r.error,
+      r.error ? 'denied' : 'ROW CREATED'
+    );
+
+    const admin = await tryAsRole(
+      db,
+      'authenticated',
+      HONEST_ADMIN_A,
+      `insert into public.platform_api_keys(company_id,key_hash,key_prefix,label)
+         values ('${CA}','ADMIN-MINTED-KEY','wf_live_','minted by an admin') returning id`
+    );
+    check(
+      'H-05: REGRESSION — a tenant admin can still mint a key',
+      !admin.error,
+      admin.error ?? 'ok'
+    );
+  }
+  {
+    // SEC-EXT-01 — the pgcrypto production key was not set, and the schema
+    // silently fell back to a key published in this repository.
+    await db.exec('RESET ROLE');
+    await db.query(`select set_config('app.settings.encryption_key','',false)`);
+    const r = await tryAsRole(
+      db,
+      'authenticated',
+      HONEST_ADMIN_A,
+      `select public.encrypt_provider_config('{"a":1}'::jsonb) c`
+    );
+    check(
+      'SEC-EXT-01: an unset encryption key fails closed rather than using a fallback',
+      !!r.error,
+      r.error ? 'refused' : 'SILENTLY ENCRYPTED'
+    );
+    await db.query(`select set_config('app.settings.encryption_key', $1, false)`, [
+      TEST_ENCRYPTION_KEY,
+    ]);
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   await db.close();
   console.log('\n' + '═'.repeat(78));
   console.log(`  ${pass} passed, ${failures.length} failed`);
