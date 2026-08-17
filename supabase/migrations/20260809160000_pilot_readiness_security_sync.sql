@@ -111,116 +111,322 @@ CREATE POLICY "scheduled_jobs_delete"
   USING (company_id = public.get_my_company_id());
 
 -- contractor_documents
-ALTER TABLE IF EXISTS public.contractor_documents ENABLE ROW LEVEL SECURITY;
+-- REMEDIATED 2026-08-17 (Team A): public.contractor_documents is never created
+-- by any migration in this repository. The surrounding statements use
+-- `ALTER TABLE IF EXISTS`, so the author's intent was clearly "only if the
+-- table is present", but the CREATE POLICY statements below were unguarded.
+-- On a clean database this migration therefore ABORTED at this point, and
+-- every statement after it — RLS for notes, supply_requests, conversations,
+-- messages and checklist_responses, the platform_api_keys expiry index, and
+-- the sync_idempotency_keys / sync_queue tables — was silently never applied.
+-- Verified failure before this fix:
+--   ERROR: relation "public.contractor_documents" does not exist
+DO $$
+BEGIN
+  IF to_regclass('public.contractor_documents') IS NULL THEN
+    RAISE NOTICE 'contractor_documents absent — skipping its RLS block (intent preserved).';
+    RETURN;
+  END IF;
 
-DROP POLICY IF EXISTS "contractor_documents_select" ON public.contractor_documents;
-CREATE POLICY "contractor_documents_select"
-  ON public.contractor_documents FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  EXECUTE 'ALTER TABLE public.contractor_documents ENABLE ROW LEVEL SECURITY';
 
-DROP POLICY IF EXISTS "contractor_documents_insert" ON public.contractor_documents;
-CREATE POLICY "contractor_documents_insert"
-  ON public.contractor_documents FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  EXECUTE 'DROP POLICY IF EXISTS "contractor_documents_select" ON public.contractor_documents';
+  EXECUTE 'CREATE POLICY "contractor_documents_select"
+             ON public.contractor_documents FOR SELECT TO authenticated
+             USING (company_id = public.get_my_company_id())';
 
-DROP POLICY IF EXISTS "contractor_documents_delete" ON public.contractor_documents;
-CREATE POLICY "contractor_documents_delete"
-  ON public.contractor_documents FOR DELETE TO authenticated
-  USING (company_id = public.get_my_company_id());
+  EXECUTE 'DROP POLICY IF EXISTS "contractor_documents_insert" ON public.contractor_documents';
+  EXECUTE 'CREATE POLICY "contractor_documents_insert"
+             ON public.contractor_documents FOR INSERT TO authenticated
+             WITH CHECK (company_id = public.get_my_company_id())';
 
+  EXECUTE 'DROP POLICY IF EXISTS "contractor_documents_delete" ON public.contractor_documents';
+  EXECUTE 'CREATE POLICY "contractor_documents_delete"
+             ON public.contractor_documents FOR DELETE TO authenticated
+             USING (company_id = public.get_my_company_id())';
+END $$;
 -- notes
-ALTER TABLE IF EXISTS public.notes ENABLE ROW LEVEL SECURITY;
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.notes ENABLE ROW LEVEL SECURITY$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "notes_select" ON public.notes;
-CREATE POLICY "notes_select"
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "notes_select" ON public.notes$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "notes_select"
   ON public.notes FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "notes_insert" ON public.notes;
-CREATE POLICY "notes_insert"
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "notes_insert" ON public.notes$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "notes_insert"
   ON public.notes FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "notes_update" ON public.notes;
-CREATE POLICY "notes_update"
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "notes_update" ON public.notes$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "notes_update"
   ON public.notes FOR UPDATE TO authenticated
   USING (company_id = public.get_my_company_id())
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "notes_delete" ON public.notes;
-CREATE POLICY "notes_delete"
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "notes_delete" ON public.notes$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.notes') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "notes_delete"
   ON public.notes FOR DELETE TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
 -- supply_requests
-ALTER TABLE IF EXISTS public.supply_requests ENABLE ROW LEVEL SECURITY;
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.supply_requests ENABLE ROW LEVEL SECURITY$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "supply_requests_select" ON public.supply_requests;
-CREATE POLICY "supply_requests_select"
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "supply_requests_select" ON public.supply_requests$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "supply_requests_select"
   ON public.supply_requests FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "supply_requests_insert" ON public.supply_requests;
-CREATE POLICY "supply_requests_insert"
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "supply_requests_insert" ON public.supply_requests$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "supply_requests_insert"
   ON public.supply_requests FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "supply_requests_update" ON public.supply_requests;
-CREATE POLICY "supply_requests_update"
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "supply_requests_update" ON public.supply_requests$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.supply_requests') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "supply_requests_update"
   ON public.supply_requests FOR UPDATE TO authenticated
   USING (company_id = public.get_my_company_id())
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
 -- conversations
-ALTER TABLE IF EXISTS public.conversations ENABLE ROW LEVEL SECURITY;
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.conversations ENABLE ROW LEVEL SECURITY$q$;
+END
+$do$;
 
-ALTER TABLE IF EXISTS public.conversations
-  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE;
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.conversations
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "conversations_select" ON public.conversations;
-CREATE POLICY "conversations_select"
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "conversations_select" ON public.conversations$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "conversations_select"
   ON public.conversations FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "conversations_insert" ON public.conversations;
-CREATE POLICY "conversations_insert"
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "conversations_insert" ON public.conversations$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.conversations') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "conversations_insert"
   ON public.conversations FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
 -- messages
-ALTER TABLE IF EXISTS public.messages ENABLE ROW LEVEL SECURITY;
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.messages ENABLE ROW LEVEL SECURITY$q$;
+END
+$do$;
 
-ALTER TABLE IF EXISTS public.messages
-  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE;
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.messages
+  ADD COLUMN IF NOT EXISTS company_id UUID REFERENCES public.companies(id) ON DELETE CASCADE$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "messages_select" ON public.messages;
-CREATE POLICY "messages_select"
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "messages_select" ON public.messages$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "messages_select"
   ON public.messages FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "messages_insert" ON public.messages;
-CREATE POLICY "messages_insert"
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "messages_insert" ON public.messages$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "messages_insert"
   ON public.messages FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
 -- checklist_responses
-ALTER TABLE IF EXISTS public.checklist_responses ENABLE ROW LEVEL SECURITY;
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$ALTER TABLE IF EXISTS public.checklist_responses ENABLE ROW LEVEL SECURITY$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "checklist_responses_select" ON public.checklist_responses;
-CREATE POLICY "checklist_responses_select"
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "checklist_responses_select" ON public.checklist_responses$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "checklist_responses_select"
   ON public.checklist_responses FOR SELECT TO authenticated
-  USING (company_id = public.get_my_company_id());
+  USING (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "checklist_responses_insert" ON public.checklist_responses;
-CREATE POLICY "checklist_responses_insert"
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "checklist_responses_insert" ON public.checklist_responses$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "checklist_responses_insert"
   ON public.checklist_responses FOR INSERT TO authenticated
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
-DROP POLICY IF EXISTS "checklist_responses_update" ON public.checklist_responses;
-CREATE POLICY "checklist_responses_update"
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$DROP POLICY IF EXISTS "checklist_responses_update" ON public.checklist_responses$q$;
+END
+$do$;
+
+DO $do$
+BEGIN
+  IF to_regclass('public.checklist_responses') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE POLICY "checklist_responses_update"
   ON public.checklist_responses FOR UPDATE TO authenticated
   USING (company_id = public.get_my_company_id())
-  WITH CHECK (company_id = public.get_my_company_id());
+  WITH CHECK (company_id = public.get_my_company_id())$q$;
+END
+$do$;
 
 -- ── PHASE 3: Platform API key expiry enforcement ──────────────────────────────
 -- Add expires_at column to platform_api_keys if not present
@@ -391,5 +597,13 @@ CREATE INDEX IF NOT EXISTS idx_notifications_company_unread
 CREATE INDEX IF NOT EXISTS idx_activity_log_company_created
   ON public.activity_log (company_id, created_at DESC);
 
-CREATE INDEX IF NOT EXISTS idx_messages_company_created
-  ON public.messages (company_id, created_at DESC);
+-- REMEDIATED 2026-08-17 (Team A): public.messages is never created by any
+-- migration in this repository, so this unguarded CREATE INDEX aborted the
+-- migration. Guarded to preserve intent without breaking clean deploys.
+DO $do$
+BEGIN
+  IF to_regclass('public.messages') IS NULL THEN RETURN; END IF;
+  EXECUTE $q$CREATE INDEX IF NOT EXISTS idx_messages_company_created
+    ON public.messages (company_id, created_at DESC)$q$;
+END
+$do$;

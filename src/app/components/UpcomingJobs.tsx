@@ -15,14 +15,17 @@ interface UpcomingJob {
 
 const statusConfig: Record<string, { label: string; bg: string; color: string }> = {
   'in-progress': { label: 'In Progress', bg: 'var(--success-bg)', color: 'var(--success)' },
-  'scheduled': { label: 'Scheduled', bg: 'var(--info-bg)', color: 'var(--info)' },
-  'unassigned': { label: 'Unassigned', bg: 'var(--warning-bg)', color: 'var(--warning)' },
+  scheduled: { label: 'Scheduled', bg: 'var(--info-bg)', color: 'var(--info)' },
+  unassigned: { label: 'Unassigned', bg: 'var(--warning-bg)', color: 'var(--warning)' },
 };
 
 function JobSkeleton() {
   return (
     <div className="flex items-start gap-3 p-3 rounded-lg animate-pulse">
-      <div className="w-0.5 self-stretch rounded-full bg-secondary mt-1" style={{ minHeight: '36px' }} />
+      <div
+        className="w-0.5 self-stretch rounded-full bg-secondary mt-1"
+        style={{ minHeight: '36px' }}
+      />
       <div className="flex-1 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <div className="h-3 w-28 rounded bg-secondary" />
@@ -69,7 +72,9 @@ export default function UpcomingJobs() {
 
       {loading ? (
         <div className="space-y-1">
-          {Array.from({ length: 3 }).map((_, i) => <JobSkeleton key={i} />)}
+          {Array.from({ length: 3 }).map((_, i) => (
+            <JobSkeleton key={i} />
+          ))}
         </div>
       ) : jobs.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -77,24 +82,48 @@ export default function UpcomingJobs() {
             <Briefcase size={18} className="text-muted-foreground" />
           </div>
           <p className="text-sm font-600 text-foreground">No jobs scheduled today</p>
-          <p className="text-xs text-muted-foreground mt-1">Jobs assigned for today will appear here</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Jobs assigned for today will appear here
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
           {jobs.map((job) => {
-            const statusKey = job.job_status === 'in-progress' ? 'in-progress' : job.assigned_to ? 'scheduled' : 'unassigned';
+            const statusKey =
+              job.job_status === 'in-progress'
+                ? 'in-progress'
+                : job.assigned_to
+                  ? 'scheduled'
+                  : 'unassigned';
             const cfg = statusConfig[statusKey] || statusConfig['scheduled'];
             return (
-              <div key={job.id} className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group">
-                <div className="flex-shrink-0 self-stretch rounded-full mt-1" style={{ backgroundColor: cfg.color, minHeight: '36px', width: '3px' }} />
+              <div
+                key={job.id}
+                className="flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+              >
+                <div
+                  className="flex-shrink-0 self-stretch rounded-full mt-1"
+                  style={{ backgroundColor: cfg.color, minHeight: '36px', width: '3px' }}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-600 text-foreground truncate">{job.site}</p>
-                    <span className="status-badge flex-shrink-0" style={{ backgroundColor: cfg.bg, color: cfg.color }}>{cfg.label}</span>
+                    <span
+                      className="status-badge flex-shrink-0"
+                      style={{ backgroundColor: cfg.bg, color: cfg.color }}
+                    >
+                      {cfg.label}
+                    </span>
                   </div>
                   <div className="flex items-center gap-3 mt-1">
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground"><Clock size={11} />{job.scheduled_time}</span>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground"><User size={11} />{job.assigned_to || '—'}</span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <Clock size={11} />
+                      {job.scheduled_time}
+                    </span>
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <User size={11} />
+                      {job.assigned_to || '—'}
+                    </span>
                   </div>
                 </div>
               </div>

@@ -5,7 +5,12 @@ import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { CheckCircle2, Clock, AlertTriangle, XCircle, Lock, Users, Briefcase } from 'lucide-react';
-import { SubscriptionStatus, getStatusLabel, getStatusColor, isReadOnly } from '@/lib/subscriptionConfig';
+import {
+  SubscriptionStatus,
+  getStatusLabel,
+  getStatusColor,
+  isReadOnly,
+} from '@/lib/subscriptionConfig';
 
 interface Plan {
   id: string;
@@ -52,7 +57,7 @@ export default function BillingPage() {
 
   useEffect(() => {
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   const loadData = async () => {
@@ -66,18 +71,20 @@ export default function BillingPage() {
       .eq('is_active', true)
       .order('sort_order');
 
-    setPlans((planData || []).map((p: Record<string, unknown>) => ({
-      id: p.id,
-      planKey: p.plan_key,
-      planName: p.plan_name,
-      description: p.description,
-      monthlyPriceCents: p.monthly_price_cents,
-      annualPriceCents: p.annual_price_cents,
-      trialDays: p.trial_days,
-      maxUsers: p.max_users,
-      maxJobs: p.max_jobs,
-      features: p.features || [],
-    })));
+    setPlans(
+      (planData || []).map((p: Record<string, unknown>) => ({
+        id: String(p.id ?? ''),
+        planKey: String(p.plan_key ?? ''),
+        planName: String(p.plan_name ?? ''),
+        description: String(p.description ?? ''),
+        monthlyPriceCents: Number(p.monthly_price_cents ?? 0),
+        annualPriceCents: Number(p.annual_price_cents ?? 0),
+        trialDays: Number(p.trial_days ?? 0),
+        maxUsers: Number(p.max_users ?? 0),
+        maxJobs: Number(p.max_jobs ?? 0),
+        features: Array.isArray(p.features) ? (p.features as string[]) : [],
+      }))
+    );
 
     // Load subscription
     if (companyId) {
@@ -131,7 +138,10 @@ export default function BillingPage() {
             <div className="skeleton h-3 w-20 mb-2" />
             <div className="skeleton h-6 w-32 mb-3" />
             <div className="skeleton h-6 w-24 rounded-full mb-4" />
-            <div className="grid grid-cols-2 gap-4 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div
+              className="grid grid-cols-2 gap-4 pt-5 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
               {[0, 1].map((i) => (
                 <div key={i} className="flex items-center gap-3">
                   <div className="skeleton w-9 h-9 rounded-lg" />
@@ -170,15 +180,25 @@ export default function BillingPage() {
       <div className="space-y-6 animate-fade-in">
         <div>
           <h1 className="text-2xl font-700 text-foreground">Billing & Subscription</h1>
-          <p className="text-sm text-muted-foreground mt-1">Manage your subscription plan and billing settings</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            Manage your subscription plan and billing settings
+          </p>
         </div>
 
         {/* Read-only banner */}
         {readOnly && (
-          <div className="flex items-center gap-3 p-4 rounded-lg text-sm" style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.2)' }}>
+          <div
+            className="flex items-center gap-3 p-4 rounded-lg text-sm"
+            style={{
+              backgroundColor: 'rgba(139,92,246,0.1)',
+              color: '#8B5CF6',
+              border: '1px solid rgba(139,92,246,0.2)',
+            }}
+          >
             <Lock size={16} />
             <span>
-              <strong>Account Read-Only:</strong> Your subscription has expired. All data is preserved. Upgrade to restore full access.
+              <strong>Account Read-Only:</strong> Your subscription has expired. All data is
+              preserved. Upgrade to restore full access.
             </span>
           </div>
         )}
@@ -189,14 +209,21 @@ export default function BillingPage() {
             <div className="flex items-start justify-between flex-wrap gap-4">
               <div>
                 <p className="text-xs font-600 text-muted-foreground mb-1">Current Plan</p>
-                <h2 className="text-xl font-700 text-foreground capitalize">{subscription.planName}</h2>
+                <h2 className="text-xl font-700 text-foreground capitalize">
+                  {subscription.planName}
+                </h2>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-600" style={{ backgroundColor: `${statusColor}18`, color: statusColor }}>
+                  <span
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-600"
+                    style={{ backgroundColor: `${statusColor}18`, color: statusColor }}
+                  >
                     <StatusIcon size={11} />
                     {statusLabel}
                   </span>
                   {subscription.billingInterval && (
-                    <span className="text-xs text-muted-foreground capitalize">{subscription.billingInterval} billing</span>
+                    <span className="text-xs text-muted-foreground capitalize">
+                      {subscription.billingInterval} billing
+                    </span>
                   )}
                 </div>
               </div>
@@ -204,27 +231,36 @@ export default function BillingPage() {
                 {subscription.trialEndsAt && subscription.status === 'trialing' && (
                   <div>
                     <p className="text-xs text-muted-foreground">Trial ends</p>
-                    <p className="text-sm font-600 text-foreground">{new Date(subscription.trialEndsAt).toLocaleDateString('en-AU')}</p>
+                    <p className="text-sm font-600 text-foreground">
+                      {new Date(subscription.trialEndsAt).toLocaleDateString('en-AU')}
+                    </p>
                   </div>
                 )}
                 {subscription.currentPeriodEnd && subscription.status === 'active' && (
                   <div>
                     <p className="text-xs text-muted-foreground">Next billing</p>
-                    <p className="text-sm font-600 text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString('en-AU')}</p>
+                    <p className="text-sm font-600 text-foreground">
+                      {new Date(subscription.currentPeriodEnd).toLocaleDateString('en-AU')}
+                    </p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Usage */}
-            <div className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t" style={{ borderColor: 'var(--border)' }}>
+            <div
+              className="grid grid-cols-2 gap-4 mt-5 pt-5 border-t"
+              style={{ borderColor: 'var(--border)' }}
+            >
               <div className="flex items-center gap-3">
                 <div className="p-2 rounded-lg" style={{ backgroundColor: 'rgba(37,99,235,0.1)' }}>
                   <Users size={14} style={{ color: '#2563EB' }} />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Max Users</p>
-                  <p className="text-sm font-600 text-foreground">{subscription.maxUsers === 999 ? 'Unlimited' : subscription.maxUsers}</p>
+                  <p className="text-sm font-600 text-foreground">
+                    {subscription.maxUsers === 999 ? 'Unlimited' : subscription.maxUsers}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -233,7 +269,9 @@ export default function BillingPage() {
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Max Jobs</p>
-                  <p className="text-sm font-600 text-foreground">{subscription.maxJobs === 9999 ? 'Unlimited' : subscription.maxJobs}</p>
+                  <p className="text-sm font-600 text-foreground">
+                    {subscription.maxJobs === 9999 ? 'Unlimited' : subscription.maxJobs}
+                  </p>
                 </div>
               </div>
             </div>
@@ -244,13 +282,19 @@ export default function BillingPage() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-base font-700 text-foreground">Available Plans</h3>
-            <div className="flex items-center gap-1 rounded-lg border p-1" style={{ borderColor: 'var(--border)' }}>
+            <div
+              className="flex items-center gap-1 rounded-lg border p-1"
+              style={{ borderColor: 'var(--border)' }}
+            >
               {(['monthly', 'annual'] as const).map((interval) => (
                 <button
                   key={interval}
                   onClick={() => setBillingInterval(interval)}
                   className="px-3 py-1.5 rounded-md text-xs font-600 transition-all capitalize"
-                  style={{ backgroundColor: billingInterval === interval ? 'var(--accent)' : 'transparent', color: billingInterval === interval ? 'white' : 'var(--muted-foreground)' }}
+                  style={{
+                    backgroundColor: billingInterval === interval ? 'var(--accent)' : 'transparent',
+                    color: billingInterval === interval ? 'white' : 'var(--muted-foreground)',
+                  }}
                 >
                   {interval}
                 </button>
@@ -260,16 +304,22 @@ export default function BillingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {plans.map((plan) => {
-              const price = billingInterval === 'annual' ? plan.annualPriceCents : plan.monthlyPriceCents;
+              const price =
+                billingInterval === 'annual' ? plan.annualPriceCents : plan.monthlyPriceCents;
               const isCurrent = subscription?.planName === plan.planKey;
               return (
                 <div
                   key={plan.id}
                   className="card-elevated p-5 rounded-2xl relative"
-                  style={{ border: isCurrent ? '2px solid var(--accent)' : '1px solid var(--border)' }}
+                  style={{
+                    border: isCurrent ? '2px solid var(--accent)' : '1px solid var(--border)',
+                  }}
                 >
                   {isCurrent && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-700 text-white" style={{ backgroundColor: 'var(--accent)' }}>
+                    <span
+                      className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-0.5 rounded-full text-xs font-700 text-white"
+                      style={{ backgroundColor: 'var(--accent)' }}
+                    >
                       Current Plan
                     </span>
                   )}
@@ -277,7 +327,11 @@ export default function BillingPage() {
                   <p className="text-xs text-muted-foreground mt-1 mb-3">{plan.description}</p>
                   <p className="text-2xl font-700 text-foreground mb-4">
                     {formatPrice(price)}
-                    {price === 0 && <span className="text-xs font-400 text-muted-foreground ml-1">(pricing TBD)</span>}
+                    {price === 0 && (
+                      <span className="text-xs font-400 text-muted-foreground ml-1">
+                        (pricing TBD)
+                      </span>
+                    )}
                   </p>
                   <ul className="space-y-1.5 mb-5">
                     {plan.features.map((f) => (
@@ -290,11 +344,16 @@ export default function BillingPage() {
                   <button
                     disabled={isCurrent}
                     className="w-full py-2 rounded-lg text-sm font-600 transition-all hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed"
-                    style={{ backgroundColor: isCurrent ? 'var(--secondary)' : 'var(--accent)', color: isCurrent ? 'var(--muted-foreground)' : 'white' }}
+                    style={{
+                      backgroundColor: isCurrent ? 'var(--secondary)' : 'var(--accent)',
+                      color: isCurrent ? 'var(--muted-foreground)' : 'white',
+                    }}
                   >
                     {isCurrent ? 'Current Plan' : 'Select Plan'}
                   </button>
-                  <p className="text-xs text-muted-foreground text-center mt-2">{plan.trialDays}-day free trial</p>
+                  <p className="text-xs text-muted-foreground text-center mt-2">
+                    {plan.trialDays}-day free trial
+                  </p>
                 </div>
               );
             })}

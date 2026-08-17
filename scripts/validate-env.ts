@@ -18,12 +18,12 @@
  */
 
 // ─── Colour helpers ───────────────────────────────────────────────────────────
-const GREEN  = '\x1b[32m';
-const RED    = '\x1b[31m';
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
-const CYAN   = '\x1b[36m';
-const BOLD   = '\x1b[1m';
-const RESET  = '\x1b[0m';
+const CYAN = '\x1b[36m';
+const BOLD = '\x1b[1m';
+const RESET = '\x1b[0m';
 
 // ─── Placeholder patterns that indicate unconfigured values ──────────────────
 const PLACEHOLDER_PATTERNS = [
@@ -32,8 +32,8 @@ const PLACEHOLDER_PATTERNS = [
   /^placeholder/i,
   /^dummy/i,
   /^test[-_]key/i,
-  /^sk-test_/i,           // Stripe test secret key
-  /^pk-test_/i,           // Stripe test publishable key (warn only)
+  /^sk-test_/i, // Stripe test secret key
+  /^pk-test_/i, // Stripe test publishable key (warn only)
   /^example\./i,
   /localhost/i,
   /^changeme/i,
@@ -104,7 +104,8 @@ const ENV_VARS: EnvVar[] = [
     checkPlaceholder: true,
     validate: (v) => {
       if (!v.startsWith('pk_')) return 'Stripe publishable key must start with "pk_"';
-      if (v.startsWith('pk_test_')) return 'WARNING: Using Stripe TEST publishable key in production';
+      if (v.startsWith('pk_test_'))
+        return 'WARNING: Using Stripe TEST publishable key in production';
       return null;
     },
   },
@@ -218,7 +219,16 @@ interface ValidationIssue {
   message: string;
 }
 
-export function validateEnv(exitOnFailure = false): boolean {
+/**
+ * DEFECT REMEDIATED: this was declared `: boolean` but returns
+ * `ValidationIssue[]`, and its only caller papered over the mismatch with
+ * `validateEnv() as unknown as ValidationIssue[]`. The `exitOnFailure`
+ * parameter was accepted and then never referenced, so the documented
+ * behaviour ("Exit codes: 0 — all required variables present and valid") was
+ * never implemented: importing this from next.config.mjs, as the file's own
+ * usage note suggests, would have validated nothing and failed nothing.
+ */
+export function validateEnv(exitOnFailure = false): ValidationIssue[] {
   const issues: ValidationIssue[] = [];
 
   for (const def of ENV_VARS) {
@@ -281,6 +291,16 @@ export function validateEnv(exitOnFailure = false): boolean {
     }
   }
 
+  if (exitOnFailure) {
+    const blocking = issues.filter((i) => i.severity === 'required' && i.type !== 'warning');
+    if (blocking.length > 0) {
+      for (const issue of blocking) {
+        console.error(`[validate-env] ${issue.key}: ${issue.message}`);
+      }
+      process.exit(1);
+    }
+  }
+
   return issues;
 }
 
@@ -290,10 +310,10 @@ function runCli(): void {
   console.log(`${BOLD}║   Innovion — Environment Variable Validator       ║${RESET}`);
   console.log(`${BOLD}╚══════════════════════════════════════════════════╝${RESET}\n`);
 
-  const issues = validateEnv() as unknown as ValidationIssue[];
-  const required    = ENV_VARS.filter((v) => v.severity === 'required');
+  const issues = validateEnv();
+  const required = ENV_VARS.filter((v) => v.severity === 'required');
   const recommended = ENV_VARS.filter((v) => v.severity === 'recommended');
-  const optional    = ENV_VARS.filter((v) => v.severity === 'optional');
+  const optional = ENV_VARS.filter((v) => v.severity === 'optional');
 
   // Print status for each variable
   console.log(`${BOLD}Required Variables (${required.length})${RESET}`);
@@ -336,7 +356,9 @@ function runCli(): void {
 
   // Summary
   const criticalIssues = issues.filter(
-    (i) => i.severity === 'required' && (i.type === 'missing' || i.type === 'placeholder' || i.type === 'invalid')
+    (i) =>
+      i.severity === 'required' &&
+      (i.type === 'missing' || i.type === 'placeholder' || i.type === 'invalid')
   );
   const warnings = issues.filter(
     (i) => i.type === 'warning' || (i.severity === 'recommended' && i.type === 'missing')

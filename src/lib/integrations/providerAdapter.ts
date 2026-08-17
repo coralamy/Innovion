@@ -112,10 +112,7 @@ export interface ProviderAdapter {
    * Exchange authorization code for tokens.
    * Returns decrypted token set — caller is responsible for encrypting before storage.
    */
-  exchangeCodeForTokens(
-    params: OAuthCallbackParams,
-    codeVerifier?: string
-  ): Promise<OAuthTokenSet>;
+  exchangeCodeForTokens(params: OAuthCallbackParams, codeVerifier?: string): Promise<OAuthTokenSet>;
 
   /**
    * Refresh an expired access token.
@@ -193,9 +190,14 @@ export abstract class BaseProviderAdapter implements ProviderAdapter {
     return `https://innovion.app/api/integrations/oauth/${this.providerSlug}/callback`;
   }
 
-  abstract buildAuthorizationUrl(params: OAuthAuthorizeParams): Promise<{ url: string; state: string; codeVerifier?: string }>;
+  abstract buildAuthorizationUrl(
+    params: OAuthAuthorizeParams
+  ): Promise<{ url: string; state: string; codeVerifier?: string }>;
 
-  abstract exchangeCodeForTokens(params: OAuthCallbackParams, codeVerifier?: string): Promise<OAuthTokenSet>;
+  abstract exchangeCodeForTokens(
+    params: OAuthCallbackParams,
+    codeVerifier?: string
+  ): Promise<OAuthTokenSet>;
 
   abstract refreshAccessToken(refreshToken: string): Promise<OAuthTokenSet>;
 
@@ -203,7 +205,11 @@ export abstract class BaseProviderAdapter implements ProviderAdapter {
 
   abstract revokeTokens(accessToken: string, refreshToken?: string): Promise<void>;
 
-  abstract validateWebhook(headers: Record<string, string>, rawBody: Buffer, signingSecret: string): Promise<WebhookValidationResult>;
+  abstract validateWebhook(
+    headers: Record<string, string>,
+    rawBody: Buffer,
+    signingSecret: string
+  ): Promise<WebhookValidationResult>;
 
   abstract sync(
     accessToken: string,

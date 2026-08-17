@@ -23,7 +23,12 @@ const staticStatusOptions = [
 
 type FilterKey = 'contractor' | 'region' | 'client' | 'status';
 
-export default function ScheduleFilterBar({ filters, onFilterChange, jobs, contractors }: ScheduleFilterBarProps) {
+export default function ScheduleFilterBar({
+  filters,
+  onFilterChange,
+  jobs,
+  contractors,
+}: ScheduleFilterBarProps) {
   const [openDropdown, setOpenDropdown] = useState<FilterKey | null>(null);
 
   // Derive dynamic options from live data
@@ -63,9 +68,9 @@ export default function ScheduleFilterBar({ filters, onFilterChange, jobs, contr
     status: staticStatusOptions,
   };
 
-  const activeCount = Object.entries(filters)
-    .filter(([k, v]) => k !== 'site' && v !== 'all')
-    .length;
+  const activeCount = Object.entries(filters).filter(
+    ([k, v]) => k !== 'site' && v !== 'all'
+  ).length;
 
   const updateFilter = (key: FilterKey, value: string) => {
     onFilterChange({ ...filters, [key]: value });
@@ -89,7 +94,10 @@ export default function ScheduleFilterBar({ filters, onFilterChange, jobs, contr
           <Filter size={14} />
           <span>Filter:</span>
           {activeCount > 0 && (
-            <span className="px-1.5 py-0.5 rounded-full text-xs font-700 text-white" style={{ backgroundColor: 'var(--accent)' }}>
+            <span
+              className="px-1.5 py-0.5 rounded-full text-xs font-700 text-white"
+              style={{ backgroundColor: 'var(--accent)' }}
+            >
               {activeCount}
             </span>
           )}

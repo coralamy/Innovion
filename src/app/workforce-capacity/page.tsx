@@ -6,15 +6,26 @@ import { employeeService, EmployeeRecord } from '@/lib/services/employeeService'
 import { contractorService, Contractor } from '@/lib/services/contractorService';
 
 import {
-  Users, UserCheck, Clock, TrendingUp, AlertTriangle,
-  ChevronDown, Filter, BarChart2,
+  Users,
+  UserCheck,
+  Clock,
+  TrendingUp,
+  AlertTriangle,
+  ChevronDown,
+  Filter,
+  BarChart2,
 } from 'lucide-react';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
 } from 'recharts';
 import Icon from '@/components/ui/AppIcon';
-
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -63,19 +74,36 @@ function utilizationLabel(pct: number): string {
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
-function KPICard({ icon: Icon, label, value, sub, color }: {
-  icon: React.ElementType; label: string; value: string; sub: string; color: string;
+function KPICard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string;
+  sub: string;
+  color: string;
 }) {
   return (
     <div className="card-elevated p-5 flex flex-col gap-3">
       <div className="flex items-start justify-between">
-        <div className="w-9 h-9 rounded-xl flex items-center justify-center" style={{ backgroundColor: `${color}18` }}>
+        <div
+          className="w-9 h-9 rounded-xl flex items-center justify-center"
+          style={{ backgroundColor: `${color}18` }}
+        >
           <Icon size={17} style={{ color }} />
         </div>
       </div>
       <div>
-        <p className="font-tabular font-800 text-[1.75rem] leading-none tracking-tight text-foreground">{value}</p>
-        <p className="text-[11px] font-600 uppercase tracking-wider mt-1.5 text-muted-foreground">{label}</p>
+        <p className="font-tabular font-800 text-[1.75rem] leading-none tracking-tight text-foreground">
+          {value}
+        </p>
+        <p className="text-[11px] font-600 uppercase tracking-wider mt-1.5 text-muted-foreground">
+          {label}
+        </p>
         <p className="text-[12px] mt-1 text-muted-foreground">{sub}</p>
       </div>
     </div>
@@ -86,20 +114,30 @@ function CapacityBar({ pct }: { pct: number }) {
   const clamped = Math.min(pct, 100);
   return (
     <div className="flex items-center gap-2.5 min-w-0">
-      <div className="flex-1 h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--secondary)' }}>
+      <div
+        className="flex-1 h-2 rounded-full overflow-hidden"
+        style={{ backgroundColor: 'var(--secondary)' }}
+      >
         <div
           className="h-full rounded-full transition-all duration-500"
           style={{ width: `${clamped}%`, backgroundColor: utilizationColor(pct) }}
         />
       </div>
-      <span className="text-xs font-600 font-tabular w-10 text-right flex-shrink-0" style={{ color: utilizationColor(pct) }}>
+      <span
+        className="text-xs font-600 font-tabular w-10 text-right flex-shrink-0"
+        style={{ color: utilizationColor(pct) }}
+      >
         {pct}%
       </span>
     </div>
   );
 }
 
-const CustomBarTooltip = ({ active, payload, label }: {
+const CustomBarTooltip = ({
+  active,
+  payload,
+  label,
+}: {
   active?: boolean;
   payload?: Array<{ name: string; value: number; color: string }>;
   label?: string;
@@ -141,7 +179,8 @@ export default function WorkforceCapacityPage() {
         ]);
 
         const empEntries: WorkforceEntry[] = employees.map((e: EmployeeRecord) => {
-          const capacity = e.employmentType === 'full-time' ? 40 : e.employmentType === 'part-time' ? 20 : 15;
+          const capacity =
+            e.employmentType === 'full-time' ? 40 : e.employmentType === 'part-time' ? 20 : 15;
           const hours = e.hoursThisWeek ?? 0;
           return {
             id: e.id,
@@ -197,13 +236,16 @@ export default function WorkforceCapacityPage() {
   }, [workforce, filterType, filterStatus, sortBy]);
 
   const kpis = useMemo(() => {
-    const active = workforce.filter((w) => w.status === 'active' || w.status === 'available' || w.status === 'on-job');
+    const active = workforce.filter(
+      (w) => w.status === 'active' || w.status === 'available' || w.status === 'on-job'
+    );
     const totalHours = workforce.reduce((s, w) => s + w.hoursThisWeek, 0);
     const totalCapacity = workforce.reduce((s, w) => s + w.hoursCapacity, 0);
     const overloaded = workforce.filter((w) => w.utilization >= 90).length;
-    const avgUtil = workforce.length > 0
-      ? Math.round(workforce.reduce((s, w) => s + w.utilization, 0) / workforce.length)
-      : 0;
+    const avgUtil =
+      workforce.length > 0
+        ? Math.round(workforce.reduce((s, w) => s + w.utilization, 0) / workforce.length)
+        : 0;
     return { active: active.length, totalHours, totalCapacity, overloaded, avgUtil };
   }, [workforce]);
 
@@ -234,7 +276,10 @@ export default function WorkforceCapacityPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[1.375rem] font-800 tracking-tight text-foreground" style={{ letterSpacing: '-0.02em' }}>
+            <h1
+              className="text-[1.375rem] font-800 tracking-tight text-foreground"
+              style={{ letterSpacing: '-0.02em' }}
+            >
               Workforce Capacity
             </h1>
             <p className="text-[13px] mt-1 text-muted-foreground">
@@ -243,7 +288,11 @@ export default function WorkforceCapacityPage() {
           </div>
           <div
             className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-600"
-            style={{ backgroundColor: 'rgba(16,185,129,0.08)', color: '#059669', border: '1px solid rgba(16,185,129,0.15)' }}
+            style={{
+              backgroundColor: 'rgba(16,185,129,0.08)',
+              color: '#059669',
+              border: '1px solid rgba(16,185,129,0.15)',
+            }}
           >
             <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
             Live
@@ -263,10 +312,34 @@ export default function WorkforceCapacityPage() {
           </div>
         ) : (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard icon={Users} label="Total Workforce" value={String(workforce.length)} sub={`${kpis.active} active now`} color="#2563EB" />
-            <KPICard icon={Clock} label="Hours This Week" value={`${kpis.totalHours}h`} sub={`of ${kpis.totalCapacity}h capacity`} color="#10B981" />
-            <KPICard icon={TrendingUp} label="Avg Utilisation" value={`${kpis.avgUtil}%`} sub="across all workforce" color="#F59E0B" />
-            <KPICard icon={AlertTriangle} label="Over Capacity" value={String(kpis.overloaded)} sub="members at ≥90%" color="#EF4444" />
+            <KPICard
+              icon={Users}
+              label="Total Workforce"
+              value={String(workforce.length)}
+              sub={`${kpis.active} active now`}
+              color="#2563EB"
+            />
+            <KPICard
+              icon={Clock}
+              label="Hours This Week"
+              value={`${kpis.totalHours}h`}
+              sub={`of ${kpis.totalCapacity}h capacity`}
+              color="#10B981"
+            />
+            <KPICard
+              icon={TrendingUp}
+              label="Avg Utilisation"
+              value={`${kpis.avgUtil}%`}
+              sub="across all workforce"
+              color="#F59E0B"
+            />
+            <KPICard
+              icon={AlertTriangle}
+              label="Over Capacity"
+              value={String(kpis.overloaded)}
+              sub="members at ≥90%"
+              color="#EF4444"
+            />
           </div>
         )}
 
@@ -280,11 +353,29 @@ export default function WorkforceCapacityPage() {
             <ResponsiveContainer width="100%" height={200}>
               <BarChart data={deptData} barGap={4} barSize={18}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                <XAxis dataKey="department" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--muted-foreground)', fontWeight: 500 }} />
-                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} width={32} unit="h" />
+                <XAxis
+                  dataKey="department"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: 'var(--muted-foreground)', fontWeight: 500 }}
+                />
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                  width={32}
+                  unit="h"
+                />
                 <Tooltip content={<CustomBarTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
-                <Bar dataKey="capacity" name="Capacity" fill="var(--secondary)" radius={[3, 3, 0, 0]}>
-                  {deptData.map((_, idx) => <Cell key={`cap-${idx}`} fill="rgba(100,116,139,0.15)" />)}
+                <Bar
+                  dataKey="capacity"
+                  name="Capacity"
+                  fill="var(--secondary)"
+                  radius={[3, 3, 0, 0]}
+                >
+                  {deptData.map((_, idx) => (
+                    <Cell key={`cap-${idx}`} fill="rgba(100,116,139,0.15)" />
+                  ))}
                 </Bar>
                 <Bar dataKey="allocated" name="Allocated" radius={[3, 3, 0, 0]}>
                   {deptData.map((entry, idx) => {
@@ -304,7 +395,10 @@ export default function WorkforceCapacityPage() {
             <span className="font-500">Filter:</span>
           </div>
           {/* Type filter */}
-          <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+          <div
+            className="flex rounded-lg overflow-hidden border"
+            style={{ borderColor: 'var(--border)' }}
+          >
             {(['all', 'employee', 'contractor'] as const).map((t) => (
               <button
                 key={t}
@@ -329,10 +423,15 @@ export default function WorkforceCapacityPage() {
             >
               <option value="all">All Statuses</option>
               {allStatuses.map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}</option>
+                <option key={s} value={s}>
+                  {s.charAt(0).toUpperCase() + s.slice(1).replace('-', ' ')}
+                </option>
               ))}
             </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <ChevronDown
+              size={12}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
           </div>
           {/* Sort */}
           <div className="relative ml-auto">
@@ -346,7 +445,10 @@ export default function WorkforceCapacityPage() {
               <option value="hours">Sort: Hours</option>
               <option value="name">Sort: Name</option>
             </select>
-            <ChevronDown size={12} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <ChevronDown
+              size={12}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
           </div>
         </div>
 
@@ -396,9 +498,16 @@ export default function WorkforceCapacityPage() {
                   <div className="md:col-span-3 flex items-center gap-3 min-w-0">
                     <div
                       className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-700 flex-shrink-0"
-                      style={{ backgroundColor: w.type === 'employee' ? 'var(--accent)' : 'var(--success)' }}
+                      style={{
+                        backgroundColor: w.type === 'employee' ? 'var(--accent)' : 'var(--success)',
+                      }}
                     >
-                      {w.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                      {w.name
+                        .split(' ')
+                        .map((n) => n[0])
+                        .join('')
+                        .toUpperCase()
+                        .slice(0, 2)}
                     </div>
                     <div className="min-w-0">
                       <p className="text-sm font-600 text-foreground truncate">{w.name}</p>
@@ -411,7 +520,8 @@ export default function WorkforceCapacityPage() {
                     <span
                       className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-600"
                       style={{
-                        backgroundColor: w.type === 'employee' ? 'rgba(37,99,235,0.08)' : 'rgba(16,185,129,0.08)',
+                        backgroundColor:
+                          w.type === 'employee' ? 'rgba(37,99,235,0.08)' : 'rgba(16,185,129,0.08)',
                         color: w.type === 'employee' ? '#2563EB' : '#059669',
                       }}
                     >
@@ -437,7 +547,10 @@ export default function WorkforceCapacityPage() {
                   <div className="md:col-span-2">
                     <p className="text-sm font-600 text-foreground font-tabular">
                       {w.hoursThisWeek}h
-                      <span className="text-xs font-400 text-muted-foreground"> / {w.hoursCapacity}h</span>
+                      <span className="text-xs font-400 text-muted-foreground">
+                        {' '}
+                        / {w.hoursCapacity}h
+                      </span>
                     </p>
                     <p className="text-xs text-muted-foreground">{w.jobsCompleted} jobs done</p>
                   </div>
@@ -445,7 +558,9 @@ export default function WorkforceCapacityPage() {
                   {/* Utilisation bar */}
                   <div className="md:col-span-3">
                     <div className="flex items-center gap-1.5 mb-1">
-                      <span className="text-[11px] font-500 text-muted-foreground">{utilizationLabel(w.utilization)}</span>
+                      <span className="text-[11px] font-500 text-muted-foreground">
+                        {utilizationLabel(w.utilization)}
+                      </span>
                     </div>
                     <CapacityBar pct={w.utilization} />
                   </div>
@@ -460,10 +575,12 @@ export default function WorkforceCapacityPage() {
               className="px-5 py-3 flex items-center justify-between text-xs text-muted-foreground"
               style={{ borderTop: '1px solid var(--border)', backgroundColor: 'var(--secondary)' }}
             >
-              <span>{filtered.length} of {workforce.length} members shown</span>
               <span>
-                Total: {filtered.reduce((s, w) => s + w.hoursThisWeek, 0)}h allocated
-                {' '}/ {filtered.reduce((s, w) => s + w.hoursCapacity, 0)}h capacity
+                {filtered.length} of {workforce.length} members shown
+              </span>
+              <span>
+                Total: {filtered.reduce((s, w) => s + w.hoursThisWeek, 0)}h allocated /{' '}
+                {filtered.reduce((s, w) => s + w.hoursCapacity, 0)}h capacity
               </span>
             </div>
           )}

@@ -2,7 +2,12 @@
 // Update these values or load from database (subscription_plans table)
 
 export type SubscriptionStatus =
-  | 'trialing' |'active' |'past_due' |'cancelled' |'suspended' |'read_only';
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'cancelled'
+  | 'suspended'
+  | 'read_only';
 
 export interface SubscriptionPlan {
   key: string;

@@ -21,19 +21,19 @@ export interface PlatformApiKey {
 }
 
 export const AVAILABLE_SCOPES = [
-  { value: 'localisation:read',       label: 'Localisation — Read' },
-  { value: 'country-config:read',     label: 'Country Config — Read' },
-  { value: 'business-rules:read',     label: 'Business Rules — Read' },
-  { value: 'tenancy:read',            label: 'Multi-Tenancy — Read' },
-  { value: 'partner-config:read',     label: 'Partner Config — Read' },
-  { value: 'translations:read',       label: 'Translations — Read' },
-  { value: 'platform-config:read',    label: 'Platform Configuration — Read' },
-  { value: 'workforce-config:read',   label: 'Workforce Config — Read' },
-  { value: 'customer-portal:read',    label: 'Customer Portal Config — Read' },
-  { value: 'partner-portal:read',     label: 'Partner Portal Config — Read' },
-  { value: 'data-governance:read',    label: 'Data Governance — Read' },
-  { value: 'audit-compliance:read',   label: 'Audit & Compliance — Read' },
-  { value: '*',                       label: 'All Scopes (wildcard)' },
+  { value: 'localisation:read', label: 'Localisation — Read' },
+  { value: 'country-config:read', label: 'Country Config — Read' },
+  { value: 'business-rules:read', label: 'Business Rules — Read' },
+  { value: 'tenancy:read', label: 'Multi-Tenancy — Read' },
+  { value: 'partner-config:read', label: 'Partner Config — Read' },
+  { value: 'translations:read', label: 'Translations — Read' },
+  { value: 'platform-config:read', label: 'Platform Configuration — Read' },
+  { value: 'workforce-config:read', label: 'Workforce Config — Read' },
+  { value: 'customer-portal:read', label: 'Customer Portal Config — Read' },
+  { value: 'partner-portal:read', label: 'Partner Portal Config — Read' },
+  { value: 'data-governance:read', label: 'Data Governance — Read' },
+  { value: 'audit-compliance:read', label: 'Audit & Compliance — Read' },
+  { value: '*', label: 'All Scopes (wildcard)' },
 ];
 
 /**
@@ -43,7 +43,9 @@ export const AVAILABLE_SCOPES = [
 export function generateRawApiKey(): string {
   const array = new Uint8Array(24);
   crypto.getRandomValues(array);
-  const hex = Array.from(array).map((b) => b.toString(16).padStart(2, '0')).join('');
+  const hex = Array.from(array)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
   return `wf_live_${hex}`;
 }
 
@@ -89,7 +91,10 @@ export async function createApiKey(params: {
     .single();
 
   if (error) {
-    logger.error('platformApiKeyService', 'Failed to create API key', { label: params.label, error: error.message });
+    logger.error('platformApiKeyService', 'Failed to create API key', {
+      label: params.label,
+      error: error.message,
+    });
     throw new Error(error.message);
   }
 
@@ -110,7 +115,10 @@ export async function listApiKeys(companyId: string): Promise<PlatformApiKey[]> 
     .order('created_at', { ascending: false });
 
   if (error) {
-    logger.error('platformApiKeyService', 'Failed to list API keys', { companyId, error: error.message });
+    logger.error('platformApiKeyService', 'Failed to list API keys', {
+      companyId,
+      error: error.message,
+    });
     throw new Error(error.message);
   }
   return (data ?? []).map(mapRow);
@@ -126,7 +134,10 @@ export async function revokeApiKey(keyId: string): Promise<void> {
     .update({ is_active: false })
     .eq('id', keyId);
   if (error) {
-    logger.error('platformApiKeyService', 'Failed to revoke API key', { keyId, error: error.message });
+    logger.error('platformApiKeyService', 'Failed to revoke API key', {
+      keyId,
+      error: error.message,
+    });
     throw new Error(error.message);
   }
   logger.info('platformApiKeyService', 'API key revoked', { keyId });

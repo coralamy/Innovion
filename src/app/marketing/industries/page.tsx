@@ -39,19 +39,34 @@ const INDUSTRIES = [
     name: 'Commercial Cleaning',
     desc: 'Manage cleaning contracts, staff rosters, site checklists and compliance documentation for commercial cleaning operations.',
     icon: '🏢',
-    features: ['Site-specific checklists', 'Staff rostering', 'Compliance tracking', 'Customer portals'],
+    features: [
+      'Site-specific checklists',
+      'Staff rostering',
+      'Compliance tracking',
+      'Customer portals',
+    ],
   },
   {
     name: 'Residential Cleaning',
     desc: 'Schedule recurring residential cleans, manage customer preferences and track staff attendance at every property.',
     icon: '🏠',
-    features: ['Recurring schedules', 'Customer preferences', 'GPS attendance', 'Mobile checklists'],
+    features: [
+      'Recurring schedules',
+      'Customer preferences',
+      'GPS attendance',
+      'Mobile checklists',
+    ],
   },
   {
     name: 'Property Maintenance',
     desc: 'Coordinate maintenance teams, track work orders and manage contractor compliance across multiple properties.',
     icon: '🔧',
-    features: ['Work order management', 'Contractor coordination', 'Multi-site visibility', 'Compliance records'],
+    features: [
+      'Work order management',
+      'Contractor coordination',
+      'Multi-site visibility',
+      'Compliance records',
+    ],
   },
   {
     name: 'Electrical Contractors',
@@ -69,43 +84,78 @@ const INDUSTRIES = [
     name: 'Landscapers',
     desc: 'Plan recurring landscape maintenance, manage seasonal crews and track equipment and consumable inventory.',
     icon: '🌿',
-    features: ['Recurring maintenance', 'Crew management', 'Equipment tracking', 'Seasonal scheduling'],
+    features: [
+      'Recurring maintenance',
+      'Crew management',
+      'Equipment tracking',
+      'Seasonal scheduling',
+    ],
   },
   {
     name: 'Pest Control',
     desc: 'Manage treatment schedules, track chemical inventory, store safety data sheets and maintain compliance records.',
     icon: '🛡️',
-    features: ['Treatment scheduling', 'Chemical inventory', 'Safety documentation', 'Compliance records'],
+    features: [
+      'Treatment scheduling',
+      'Chemical inventory',
+      'Safety documentation',
+      'Compliance records',
+    ],
   },
   {
     name: 'Security Services',
     desc: 'Coordinate security patrols, manage guard licences, track incidents and maintain site-specific procedures.',
     icon: '🔐',
-    features: ['Patrol scheduling', 'Guard licence tracking', 'Incident reporting', 'Site procedures'],
+    features: [
+      'Patrol scheduling',
+      'Guard licence tracking',
+      'Incident reporting',
+      'Site procedures',
+    ],
   },
   {
     name: 'HVAC',
     desc: 'Schedule preventive maintenance, manage technician certifications and track parts across service vehicles.',
     icon: '❄️',
-    features: ['Preventive maintenance', 'Technician certifications', 'Parts management', 'Service history'],
+    features: [
+      'Preventive maintenance',
+      'Technician certifications',
+      'Parts management',
+      'Service history',
+    ],
   },
   {
     name: 'Mobile Service Businesses',
     desc: 'Coordinate mobile service teams, track vehicle locations and manage customer appointments efficiently.',
     icon: '🚐',
-    features: ['Mobile team coordination', 'Appointment management', 'Route planning', 'Customer records'],
+    features: [
+      'Mobile team coordination',
+      'Appointment management',
+      'Route planning',
+      'Customer records',
+    ],
   },
   {
     name: 'Trade Contractors',
     desc: 'Manage trade jobs, subcontractor relationships, compliance documentation and project scheduling.',
     icon: '🏗️',
-    features: ['Job management', 'Subcontractor management', 'Compliance documentation', 'Project scheduling'],
+    features: [
+      'Job management',
+      'Subcontractor management',
+      'Compliance documentation',
+      'Project scheduling',
+    ],
   },
   {
     name: 'Inspection Services',
     desc: 'Schedule inspections, manage digital inspection checklists, generate reports and track follow-up actions.',
     icon: '🔍',
-    features: ['Inspection scheduling', 'Digital checklists', 'Report generation', 'Follow-up tracking'],
+    features: [
+      'Inspection scheduling',
+      'Digital checklists',
+      'Report generation',
+      'Follow-up tracking',
+    ],
   },
 ];
 
@@ -122,14 +172,21 @@ export default function IndustriesPage() {
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
             <div className="w-1.5 h-1.5 bg-[#60a5fa] rounded-full" />
-            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">Industries</span>
+            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">
+              Industries
+            </span>
           </div>
           <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-            Built for businesses<br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#60a5fa] to-[#93c5fd]">that work in the field</span>
+            Built for businesses
+            <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#60a5fa] to-[#93c5fd]">
+              that work in the field
+            </span>
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto">
-            Innovion serves operational businesses across <strong className="text-white">247+ industries</strong> in 29 sectors. Every workflow designed around how you actually work.
+            Innovion serves operational businesses across{' '}
+            <strong className="text-white">247+ industries</strong> in 29 sectors. Every workflow
+            designed around how you actually work.
           </p>
         </div>
       </section>
@@ -139,13 +196,18 @@ export default function IndustriesPage() {
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[#0F1C2E] mb-3">Industries by Sector</h2>
             <p className="text-slate-500 text-lg">
-              A complete breakdown of the {totalIndustries} industries Innovion supports across {SECTOR_DATA?.length} sectors.
+              A complete breakdown of the {totalIndustries} industries Innovion supports across{' '}
+              {SECTOR_DATA?.length} sectors.
             </p>
           </div>
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
             <div className="grid grid-cols-2 bg-[#0F1C2E] px-6 py-3">
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">Sector</span>
-              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide text-right">Industries</span>
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide">
+                Sector
+              </span>
+              <span className="text-xs font-semibold text-slate-300 uppercase tracking-wide text-right">
+                Industries
+              </span>
             </div>
             <div className="divide-y divide-slate-50">
               {SECTOR_DATA?.map((row, idx) => (
@@ -161,7 +223,9 @@ export default function IndustriesPage() {
                         style={{ width: `${(row?.industries / 28) * 100}%` }}
                       />
                     </div>
-                    <span className="text-sm font-semibold text-[#2563EB] w-6 text-right">{row?.industries}</span>
+                    <span className="text-sm font-semibold text-[#2563EB] w-6 text-right">
+                      {row?.industries}
+                    </span>
                   </div>
                 </div>
               ))}
@@ -179,7 +243,9 @@ export default function IndustriesPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <div className="text-center mb-12">
             <h2 className="text-3xl font-bold text-[#0F1C2E] mb-3">Featured Industries</h2>
-            <p className="text-slate-500 text-lg">A closer look at some of the industries Innovion powers every day.</p>
+            <p className="text-slate-500 text-lg">
+              A closer look at some of the industries Innovion powers every day.
+            </p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {INDUSTRIES?.map((industry) => (
@@ -192,15 +258,27 @@ export default function IndustriesPage() {
                     {industry?.icon}
                   </div>
                   <div>
-                    <h3 className="font-bold text-[#0F1C2E] text-lg leading-tight">{industry?.name}</h3>
+                    <h3 className="font-bold text-[#0F1C2E] text-lg leading-tight">
+                      {industry?.name}
+                    </h3>
                   </div>
                 </div>
                 <p className="text-slate-500 text-sm leading-relaxed mb-5">{industry?.desc}</p>
                 <ul className="space-y-1.5">
                   {industry?.features?.map((feature) => (
                     <li key={feature} className="flex items-center gap-2 text-xs text-slate-500">
-                      <svg className="w-3.5 h-3.5 text-[#2563EB] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                      <svg
+                        className="w-3.5 h-3.5 text-[#2563EB] flex-shrink-0"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2.5}
+                          d="M5 13l4 4L19 7"
+                        />
                       </svg>
                       {feature}
                     </li>
@@ -216,7 +294,8 @@ export default function IndustriesPage() {
         <div className="max-w-4xl mx-auto px-6 lg:px-8 text-center">
           <h2 className="text-4xl font-bold text-[#0F1C2E] mb-6">Don&apos;t see your industry?</h2>
           <p className="text-lg text-slate-500 mb-8">
-            If your business manages jobs, staff, customers and compliance — Innovion is built for you. Start a free trial and see how it fits your operation.
+            If your business manages jobs, staff, customers and compliance — Innovion is built for
+            you. Start a free trial and see how it fits your operation.
           </p>
           <Link
             href="/sign-up-login"
@@ -224,7 +303,12 @@ export default function IndustriesPage() {
           >
             Start Free Trial
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M17 8l4 4m0 0l-4 4m4-4H3"
+              />
             </svg>
           </Link>
         </div>

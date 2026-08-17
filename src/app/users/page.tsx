@@ -1,7 +1,26 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { UserCog, Plus, Search, MoreHorizontal, Shield, CheckCircle2, XCircle, Clock, Edit2, Trash2, Key, Eye, Users, Lock, Mail, X, Loader2, AlertCircle } from 'lucide-react';
+import {
+  UserCog,
+  Plus,
+  Search,
+  MoreHorizontal,
+  Shield,
+  CheckCircle2,
+  XCircle,
+  Clock,
+  Edit2,
+  Trash2,
+  Key,
+  Eye,
+  Users,
+  Lock,
+  Mail,
+  X,
+  Loader2,
+  AlertCircle,
+} from 'lucide-react';
 import { useRBAC } from '@/contexts/RBACContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
@@ -35,10 +54,30 @@ const roleConfig: Record<string, { bg: string; text: string; label: string }> = 
 };
 
 const statusConfig: Record<string, { bg: string; text: string; label: string; dot: string }> = {
-  active: { bg: 'var(--success-bg)', text: 'var(--success)', label: 'Active', dot: 'var(--success)' },
-  inactive: { bg: 'var(--secondary)', text: 'var(--muted-foreground)', label: 'Inactive', dot: 'var(--muted-foreground)' },
-  pending: { bg: 'var(--warning-bg)', text: 'var(--warning)', label: 'Pending', dot: 'var(--warning)' },
-  suspended: { bg: 'var(--danger-bg)', text: 'var(--danger)', label: 'Suspended', dot: 'var(--danger)' },
+  active: {
+    bg: 'var(--success-bg)',
+    text: 'var(--success)',
+    label: 'Active',
+    dot: 'var(--success)',
+  },
+  inactive: {
+    bg: 'var(--secondary)',
+    text: 'var(--muted-foreground)',
+    label: 'Inactive',
+    dot: 'var(--muted-foreground)',
+  },
+  pending: {
+    bg: 'var(--warning-bg)',
+    text: 'var(--warning)',
+    label: 'Pending',
+    dot: 'var(--warning)',
+  },
+  suspended: {
+    bg: 'var(--danger-bg)',
+    text: 'var(--danger)',
+    label: 'Suspended',
+    dot: 'var(--danger)',
+  },
 };
 
 const AVATAR_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#06B6D4', '#EF4444', '#84CC16'];
@@ -51,8 +90,14 @@ function InviteModal({ onClose, onInvited, companyId }: InviteModalProps) {
   const [success, setSuccess] = useState(false);
 
   const handleInvite = async () => {
-    if (!email.trim()) { setError('Email is required'); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setError('Enter a valid email address'); return; }
+    if (!email.trim()) {
+      setError('Email is required');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setError('Enter a valid email address');
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -69,15 +114,17 @@ function InviteModal({ onClose, onInvited, companyId }: InviteModalProps) {
         throw inviteError;
       }
       // Send invitation email
-      await emailService.sendWelcome(
-        email.trim().toLowerCase(),
-        email.split('@')[0],
-        'Your Team',
-        role
-      ).catch(() => {/* silent fail if email not configured */});
+      await emailService
+        .sendWelcome(email.trim().toLowerCase(), email.split('@')[0], 'Your Team', role)
+        .catch(() => {
+          /* silent fail if email not configured */
+        });
 
       setSuccess(true);
-      setTimeout(() => { onInvited(); onClose(); }, 1500);
+      setTimeout(() => {
+        onInvited();
+        onClose();
+      }, 1500);
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to send invite. Please try again.');
     } finally {
@@ -86,30 +133,46 @@ function InviteModal({ onClose, onInvited, companyId }: InviteModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+    >
       <div className="card-elevated rounded-2xl w-full max-w-md p-6 animate-slide-up">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="text-lg font-700 text-foreground">Invite Team Member</h2>
-            <p className="text-xs text-muted-foreground mt-0.5">They&apos;ll receive an email to join your workspace</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              They&apos;ll receive an email to join your workspace
+            </p>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg hover:bg-secondary transition-colors"
+          >
             <X size={16} className="text-muted-foreground" />
           </button>
         </div>
 
         {success ? (
           <div className="py-6 text-center">
-            <div className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3" style={{ backgroundColor: 'var(--success-bg)' }}>
+            <div
+              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3"
+              style={{ backgroundColor: 'var(--success-bg)' }}
+            >
               <CheckCircle2 size={24} style={{ color: 'var(--success)' }} />
             </div>
             <p className="text-sm font-700 text-foreground">Invite sent!</p>
-            <p className="text-xs text-muted-foreground mt-1">An invitation has been recorded for {email}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              An invitation has been recorded for {email}
+            </p>
           </div>
         ) : (
           <div className="space-y-4">
             {error && (
-              <div className="flex items-start gap-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--danger-bg)' }}>
+              <div
+                className="flex items-start gap-2 p-3 rounded-lg"
+                style={{ backgroundColor: 'var(--danger-bg)' }}
+              >
                 <AlertCircle size={14} className="text-danger flex-shrink-0 mt-0.5" />
                 <p className="text-xs text-danger font-500">{error}</p>
               </div>
@@ -145,12 +208,19 @@ function InviteModal({ onClose, onInvited, companyId }: InviteModalProps) {
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                {role === 'manager' ? 'Can manage jobs, contractors, and reports' :
-                 role === 'supervisor'? 'Can manage jobs and view contractors' : 'Read-only access to assigned areas'}
+                {role === 'manager'
+                  ? 'Can manage jobs, contractors, and reports'
+                  : role === 'supervisor'
+                    ? 'Can manage jobs and view contractors'
+                    : 'Read-only access to assigned areas'}
               </p>
             </div>
             <div className="flex gap-2 pt-2">
-              <button onClick={onClose} className="flex-1 py-2.5 rounded-xl text-sm font-600 border transition-all hover:bg-secondary" style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}>
+              <button
+                onClick={onClose}
+                className="flex-1 py-2.5 rounded-xl text-sm font-600 border transition-all hover:bg-secondary"
+                style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
+              >
                 Cancel
               </button>
               <button
@@ -159,7 +229,15 @@ function InviteModal({ onClose, onInvited, companyId }: InviteModalProps) {
                 className="flex-1 py-2.5 rounded-xl text-sm font-700 text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-60 flex items-center justify-center gap-2"
                 style={{ backgroundColor: 'var(--accent)' }}
               >
-                {loading ? <><Loader2 size={14} className="animate-spin" /> Sending…</> : <><Mail size={14} /> Send Invite</>}
+                {loading ? (
+                  <>
+                    <Loader2 size={14} className="animate-spin" /> Sending…
+                  </>
+                ) : (
+                  <>
+                    <Mail size={14} /> Send Invite
+                  </>
+                )}
               </button>
             </div>
           </div>
@@ -184,7 +262,7 @@ export default function UsersPage() {
 
   useEffect(() => {
     loadUsers();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   const loadUsers = async () => {
@@ -203,7 +281,10 @@ export default function UsersPage() {
           role: r.role as UserRecord['role'],
           status: 'active',
           lastLogin: 'Recently',
-          joinedDate: new Date(r.created_at).toLocaleDateString('en-AU', { month: 'short', year: 'numeric' }),
+          joinedDate: new Date(r.created_at).toLocaleDateString('en-AU', {
+            month: 'short',
+            year: 'numeric',
+          }),
           initials: `U${idx + 1}`,
           color: AVATAR_COLORS[idx % AVATAR_COLORS.length],
           twoFactor: false,
@@ -226,14 +307,18 @@ export default function UsersPage() {
         <div className="flex flex-col items-center justify-center py-24 text-center">
           <Lock size={48} className="text-muted-foreground mb-4 opacity-40" />
           <h2 className="text-xl font-700 text-foreground">Access Restricted</h2>
-          <p className="text-sm text-muted-foreground mt-2 max-w-sm">You don&apos;t have permission to manage users. Contact your administrator.</p>
+          <p className="text-sm text-muted-foreground mt-2 max-w-sm">
+            You don&apos;t have permission to manage users. Contact your administrator.
+          </p>
         </div>
       </AppLayout>
     );
   }
 
   const filtered = users.filter((u) => {
-    const matchSearch = u.name.toLowerCase().includes(search.toLowerCase()) || u.email.toLowerCase().includes(search.toLowerCase());
+    const matchSearch =
+      u.name.toLowerCase().includes(search.toLowerCase()) ||
+      u.email.toLowerCase().includes(search.toLowerCase());
     const matchRole = filterRole === 'all' || u.role === filterRole;
     const matchStatus = filterStatus === 'all' || u.status === filterStatus;
     return matchSearch && matchRole && matchStatus;
@@ -272,9 +357,19 @@ export default function UsersPage() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: 'Total Users', value: stats.total, icon: Users, color: 'var(--accent)' },
-            { label: 'Active Users', value: stats.active, icon: CheckCircle2, color: 'var(--success)' },
+            {
+              label: 'Active Users',
+              value: stats.active,
+              icon: CheckCircle2,
+              color: 'var(--success)',
+            },
             { label: 'Admins', value: stats.admins, icon: Shield, color: 'var(--danger)' },
-            { label: '2FA Enabled', value: `${stats.twoFactor}/${stats.total}`, icon: Lock, color: '#8B5CF6' },
+            {
+              label: '2FA Enabled',
+              value: `${stats.twoFactor}/${stats.total}`,
+              icon: Lock,
+              color: '#8B5CF6',
+            },
           ].map((s) => (
             <div key={s.label} className="card-elevated p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg" style={{ backgroundColor: `${s.color}18` }}>
@@ -295,7 +390,10 @@ export default function UsersPage() {
         {/* Filters */}
         <div className="card-elevated p-3 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px] relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
             <input
               type="text"
               placeholder="Search users..."
@@ -305,14 +403,30 @@ export default function UsersPage() {
               style={{ borderColor: 'var(--border)' }}
             />
           </div>
-          <select value={filterRole} onChange={(e) => { setFilterRole(e.target.value); setPage(1); }} className="text-sm px-3 py-2 rounded-lg border bg-background focus:outline-none" style={{ borderColor: 'var(--border)' }}>
+          <select
+            value={filterRole}
+            onChange={(e) => {
+              setFilterRole(e.target.value);
+              setPage(1);
+            }}
+            className="text-sm px-3 py-2 rounded-lg border bg-background focus:outline-none"
+            style={{ borderColor: 'var(--border)' }}
+          >
             <option value="all">All Roles</option>
             <option value="admin">Admin</option>
             <option value="manager">Manager</option>
             <option value="supervisor">Supervisor</option>
             <option value="viewer">Viewer</option>
           </select>
-          <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }} className="text-sm px-3 py-2 rounded-lg border bg-background focus:outline-none" style={{ borderColor: 'var(--border)' }}>
+          <select
+            value={filterStatus}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPage(1);
+            }}
+            className="text-sm px-3 py-2 rounded-lg border bg-background focus:outline-none"
+            style={{ borderColor: 'var(--border)' }}
+          >
             <option value="all">All Status</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
@@ -341,9 +455,20 @@ export default function UsersPage() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr style={{ borderBottom: '1px solid var(--border)', backgroundColor: 'var(--secondary)' }}>
+                  <tr
+                    style={{
+                      borderBottom: '1px solid var(--border)',
+                      backgroundColor: 'var(--secondary)',
+                    }}
+                  >
                     {['User', 'Role', 'Joined', '2FA', 'Last Login', 'Status', ''].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-600 uppercase tracking-wide text-muted-foreground whitespace-nowrap" style={{ fontSize: '11px' }}>{h}</th>
+                      <th
+                        key={h}
+                        className="text-left px-4 py-3 text-xs font-600 uppercase tracking-wide text-muted-foreground whitespace-nowrap"
+                        style={{ fontSize: '11px' }}
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -352,22 +477,41 @@ export default function UsersPage() {
                     const rc = roleConfig[user.role] || roleConfig['viewer'];
                     const sc = statusConfig[user.status] || statusConfig['active'];
                     return (
-                      <tr key={user.id} className="transition-colors hover:bg-secondary/50" style={{ borderBottom: idx < paginated.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                      <tr
+                        key={user.id}
+                        className="transition-colors hover:bg-secondary/50"
+                        style={{
+                          borderBottom:
+                            idx < paginated.length - 1 ? '1px solid var(--border)' : 'none',
+                        }}
+                      >
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0" style={{ backgroundColor: user.color }}>
+                            <div
+                              className="w-9 h-9 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0"
+                              style={{ backgroundColor: user.color }}
+                            >
                               {user.initials}
                             </div>
                             <div>
                               <p className="text-sm font-600 text-foreground">{user.name}</p>
-                              {user.email && <p className="text-xs text-muted-foreground">{user.email}</p>}
+                              {user.email && (
+                                <p className="text-xs text-muted-foreground">{user.email}</p>
+                              )}
                             </div>
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="status-badge" style={{ backgroundColor: rc.bg, color: rc.text }}>{rc.label}</span>
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: rc.bg, color: rc.text }}
+                          >
+                            {rc.label}
+                          </span>
                         </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground">{user.joinedDate}</td>
+                        <td className="px-4 py-3 text-sm text-muted-foreground">
+                          {user.joinedDate}
+                        </td>
                         <td className="px-4 py-3">
                           {user.twoFactor ? (
                             <CheckCircle2 size={16} style={{ color: 'var(--success)' }} />
@@ -377,12 +521,19 @@ export default function UsersPage() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                            <Clock size={11} />{user.lastLogin}
+                            <Clock size={11} />
+                            {user.lastLogin}
                           </div>
                         </td>
                         <td className="px-4 py-3">
-                          <span className="status-badge" style={{ backgroundColor: sc.bg, color: sc.text }}>
-                            <span className="w-1.5 h-1.5 rounded-full mr-1.5 inline-block" style={{ backgroundColor: sc.dot }} />
+                          <span
+                            className="status-badge"
+                            style={{ backgroundColor: sc.bg, color: sc.text }}
+                          >
+                            <span
+                              className="w-1.5 h-1.5 rounded-full mr-1.5 inline-block"
+                              style={{ backgroundColor: sc.dot }}
+                            />
                             {sc.label}
                           </span>
                         </td>
@@ -406,7 +557,12 @@ export default function UsersPage() {
                                     key={action.label}
                                     onClick={() => setOpenMenu(null)}
                                     className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-secondary transition-colors text-left"
-                                    style={{ color: action.label === 'Remove User' ? 'var(--danger)' : 'var(--foreground)' }}
+                                    style={{
+                                      color:
+                                        action.label === 'Remove User'
+                                          ? 'var(--danger)'
+                                          : 'var(--foreground)',
+                                    }}
                                   >
                                     <action.icon size={14} />
                                     {action.label}
@@ -435,20 +591,67 @@ export default function UsersPage() {
               )}
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                  <p className="text-xs text-muted-foreground">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</p>
+                <div
+                  className="flex items-center justify-between px-4 py-3 border-t"
+                  style={{ borderColor: 'var(--border)' }}
+                >
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </p>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="15 18 9 12 15 6" /></svg>
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground"
+                      >
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
-                      <React.Fragment key={p}>
-                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-muted-foreground px-1">…</span>}
-                        <button onClick={() => setPage(p)} className="w-7 h-7 rounded-md text-xs font-600 transition-colors" style={{ backgroundColor: p === page ? 'var(--accent)' : 'transparent', color: p === page ? 'white' : 'var(--foreground)' }}>{p}</button>
-                      </React.Fragment>
-                    ))}
-                    <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="9 18 15 12 9 6" /></svg>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => (
+                        <React.Fragment key={p}>
+                          {idx > 0 && arr[idx - 1] !== p - 1 && (
+                            <span className="text-xs text-muted-foreground px-1">…</span>
+                          )}
+                          <button
+                            onClick={() => setPage(p)}
+                            className="w-7 h-7 rounded-md text-xs font-600 transition-colors"
+                            style={{
+                              backgroundColor: p === page ? 'var(--accent)' : 'transparent',
+                              color: p === page ? 'white' : 'var(--foreground)',
+                            }}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
                     </button>
                   </div>
                 </div>

@@ -31,12 +31,52 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await createClient();
 
-    // Resolve the authenticated user's company_id for strict tenant scoping.
-    // This ensures all queries below are filtered to the exact tenant — not relying
-    // on the permissive RLS policy (company_id IS NULL OR company_id = ...) which
-    // would expose legacy NULL-company_id seed rows to every tenant.
-    const { data: { user } } = await supabase.auth.getUser();
-    const companyId: string | null = user?.user_metadata?.company_id ?? null;
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    /**
+     * DEFECT 1 REMEDIATED (no authentication assertion):
+     *   The route never checked whether `user` was present. With no session,
+     *   `companyId` fell through to null, every query below became
+     *   `.eq('company_id', '')` — a malformed uuid, which PostgREST rejects —
+     *   and each `?? []` turned the rejection into an empty array. The endpoint
+     *   answered 200 OK with a fully-formed, all-zero dashboard to an
+     *   unauthenticated caller instead of 401.
+     *
+     * DEFECT 2 REMEDIATED (client-writable tenant authority):
+     *   The tenant came from
+     *       user?.user_metadata?.company_id
+     *   which the end user writes via `supabase.auth.updateUser()`. Every one
+     *   of the nine queries below was then scoped to a tenant the caller had
+     *   nominated. RLS stops the rows coming back, but the application must not
+     *   ask; the authoritative source is public.user_roles.
+     */
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const { data: membership } = await supabase
+      .from('user_roles')
+      .select('company_id, created_at')
+      .eq('user_id', user.id)
+      .not('company_id', 'is', null)
+      .order('created_at', { ascending: true });
+
+    const authorisedIds = (membership ?? []).map((m) => m.company_id as string);
+    const requested = user.user_metadata?.company_id as string | undefined;
+
+    // Metadata may SELECT among tenants the user genuinely belongs to; it can
+    // never introduce one.
+    const companyId: string | null =
+      requested && authorisedIds.includes(requested) ? requested : (authorisedIds[0] ?? null);
+
+    if (!companyId) {
+      return NextResponse.json(
+        { error: 'No organisation is associated with this account', code: 'NO_TENANT' },
+        { status: 403 }
+      );
+    }
 
     // Compute week boundaries server-side (avoids client timezone drift)
     const now = new Date();
@@ -153,7 +193,10 @@ export async function GET(req: NextRequest) {
 
     // ── Weekly jobs chart data ────────────────────────────────────────────────
     const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-    const dayMap: Record<string, { day: string; scheduled: number; completed: number; issues: number }> = {};
+    const dayMap: Record<
+      string,
+      { day: string; scheduled: number; completed: number; issues: number }
+    > = {};
     for (let i = 0; i < 7; i++) {
       const d = new Date(monday);
       d.setDate(monday.getDate() + i);
@@ -182,15 +225,28 @@ export async function GET(req: NextRequest) {
       .map(([name, value]) => ({ name, value }));
 
     // ── Contractor status (for ContractorAvailability widget) ─────────────────
-    const contractorStatus = contractors.map((row: {
-      id: string; name: string; initials: string; availability: string; hours_this_week: number | null;
-    }) => ({
-      id: row.id,
-      name: row.name,
-      initials: row.initials || row.name.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2),
-      status: row.availability,
-      utilization: Math.min(Math.round(((row.hours_this_week ?? 0) / 40) * 100), 100),
-    }));
+    const contractorStatus = contractors.map(
+      (row: {
+        id: string;
+        name: string;
+        initials: string;
+        availability: string;
+        hours_this_week: number | null;
+      }) => ({
+        id: row.id,
+        name: row.name,
+        initials:
+          row.initials ||
+          row.name
+            .split(' ')
+            .map((n: string) => n[0])
+            .join('')
+            .toUpperCase()
+            .slice(0, 2),
+        status: row.availability,
+        utilization: Math.min(Math.round(((row.hours_this_week ?? 0) / 40) * 100), 100),
+      })
+    );
 
     const response = NextResponse.json({
       data: {
@@ -218,8 +274,22 @@ export async function GET(req: NextRequest) {
       },
     });
 
-    // Cache for 30 seconds — stale-while-revalidate for 60s
-    response.headers.set('Cache-Control', 's-maxage=30, stale-while-revalidate=60');
+    /**
+     * DEFECT REMEDIATED (P1 — cross-tenant response caching):
+     *   This previously set
+     *       Cache-Control: s-maxage=30, stale-while-revalidate=60
+     *   `s-maxage` targets SHARED caches — the CDN in front of the deployment.
+     *   The response body is entirely tenant-specific, and the cache key is the
+     *   URL, which is identical for every tenant and every user. A CDN
+     *   honouring that directive would serve one organisation's job counts,
+     *   revenue, incidents, activity feed and contractor names to the next
+     *   organisation that requested the dashboard within the window — a
+     *   cross-tenant disclosure originating entirely outside the database,
+     *   where no RLS policy can intervene.
+     *
+     *   Per-user, authenticated responses must never be shared-cacheable.
+     */
+    response.headers.set('Cache-Control', 'private, no-store, max-age=0');
 
     return addRateLimitHeaders(response, rlResult);
   } catch (err) {

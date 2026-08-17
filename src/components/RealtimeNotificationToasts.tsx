@@ -6,7 +6,6 @@ import { X, AlertTriangle, CheckCircle2, Info, AlertCircle, ExternalLink } from 
 import Link from 'next/link';
 import Icon from '@/components/ui/AppIcon';
 
-
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 interface ToastNotification {
@@ -22,17 +21,47 @@ interface ToastNotification {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const typeConfig = {
-  alert:   { icon: AlertTriangle,  bg: 'var(--danger-bg)',  border: 'rgba(239,68,68,0.2)',   text: 'var(--danger)',   accent: '#EF4444' },
-  success: { icon: CheckCircle2,   bg: 'var(--success-bg)', border: 'rgba(16,185,129,0.2)',  text: 'var(--success)',  accent: '#10B981' },
-  info:    { icon: Info,           bg: 'var(--info-bg)',    border: 'rgba(59,130,246,0.2)',  text: 'var(--info)',     accent: '#3B82F6' },
-  warning: { icon: AlertCircle,    bg: 'var(--warning-bg)', border: 'rgba(245,158,11,0.2)',  text: 'var(--warning)',  accent: '#F59E0B' },
+  alert: {
+    icon: AlertTriangle,
+    bg: 'var(--danger-bg)',
+    border: 'rgba(239,68,68,0.2)',
+    text: 'var(--danger)',
+    accent: '#EF4444',
+  },
+  success: {
+    icon: CheckCircle2,
+    bg: 'var(--success-bg)',
+    border: 'rgba(16,185,129,0.2)',
+    text: 'var(--success)',
+    accent: '#10B981',
+  },
+  info: {
+    icon: Info,
+    bg: 'var(--info-bg)',
+    border: 'rgba(59,130,246,0.2)',
+    text: 'var(--info)',
+    accent: '#3B82F6',
+  },
+  warning: {
+    icon: AlertCircle,
+    bg: 'var(--warning-bg)',
+    border: 'rgba(245,158,11,0.2)',
+    text: 'var(--warning)',
+    accent: '#F59E0B',
+  },
 };
 
 const TOAST_DURATION = 6000; // ms
 
 // ── Toast Item ────────────────────────────────────────────────────────────────
 
-function ToastItem({ toast, onDismiss }: { toast: ToastNotification; onDismiss: (id: string) => void }) {
+function ToastItem({
+  toast,
+  onDismiss,
+}: {
+  toast: ToastNotification;
+  onDismiss: (id: string) => void;
+}) {
   const cfg = typeConfig[toast.type] || typeConfig['info'];
   const Icon = cfg.icon;
   const [visible, setVisible] = useState(false);
@@ -43,8 +72,11 @@ function ToastItem({ toast, onDismiss }: { toast: ToastNotification; onDismiss: 
     const t = setTimeout(() => setVisible(true), 10);
     // Auto-dismiss
     const d = setTimeout(() => dismiss(), TOAST_DURATION);
-    return () => { clearTimeout(t); clearTimeout(d); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      clearTimeout(t);
+      clearTimeout(d);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const dismiss = () => {
@@ -87,7 +119,9 @@ function ToastItem({ toast, onDismiss }: { toast: ToastNotification; onDismiss: 
       {/* Content */}
       <div className="flex-1 min-w-0">
         <p className="text-sm font-700 text-foreground leading-tight">{toast.title}</p>
-        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">{toast.message}</p>
+        <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed line-clamp-2">
+          {toast.message}
+        </p>
         {toast.actionLabel && (
           <Link
             href="/notifications"
@@ -171,12 +205,16 @@ export default function RealtimeNotificationToasts() {
       )
       .subscribe(() => {
         // Mark first load complete after subscribe callback fires
-        setTimeout(() => { isFirstLoad.current = false; }, 500);
+        setTimeout(() => {
+          isFirstLoad.current = false;
+        }, 500);
       });
 
     channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, companyId]);
 
   if (toasts.length === 0) return null;

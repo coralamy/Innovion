@@ -31,8 +31,8 @@ function formatEntry(entry: LogEntry): string {
   if (isDev) {
     const prefix = {
       debug: '🔍 DEBUG',
-      info:  '✅ INFO ',
-      warn:  '⚠️  WARN ',
+      info: '✅ INFO ',
+      warn: '⚠️  WARN ',
       error: '❌ ERROR',
     }[entry.level];
     const ctx = entry.context ? ` | ${JSON.stringify(entry.context)}` : '';
@@ -42,7 +42,13 @@ function formatEntry(entry: LogEntry): string {
   return JSON.stringify(entry);
 }
 
-function log(level: LogLevel, service: string, message: string, context?: Record<string, unknown>, err?: unknown): void {
+function log(
+  level: LogLevel,
+  service: string,
+  message: string,
+  context?: Record<string, unknown>,
+  err?: unknown
+): void {
   const entry: LogEntry = {
     level,
     service,
@@ -60,11 +66,31 @@ function log(level: LogLevel, service: string, message: string, context?: Record
 
   const formatted = formatEntry(entry);
 
+  /**
+   * DEFECT REMEDIATED (production observability):
+   *   Every branch of this switch was guarded by `if (isDev)`, so in production
+   *   the logger emitted NOTHING — not even errors — despite the file's own
+   *   documentation stating "In production, logs are structured JSON for
+   *   ingestion by log aggregators". Every `logger.error(...)` call across the
+   *   platform, including the ones that record authentication failures,
+   *   credential-encryption failures and cross-tenant denials, was discarded.
+   *   Diagnosing a production incident would have been impossible.
+   *
+   *   `debug` remains development-only, which is the intended behaviour.
+   */
   switch (level) {
-    case 'debug': if (isDev) console.info(formatted); break;
-    case 'info':  if (isDev) console.info(formatted); break;
-    case 'warn':  if (isDev) console.warn(formatted); break;
-    case 'error': if (isDev) console.error(formatted); break;
+    case 'debug':
+      if (isDev) console.info(formatted);
+      break;
+    case 'info':
+      console.info(formatted);
+      break;
+    case 'warn':
+      console.warn(formatted);
+      break;
+    case 'error':
+      console.error(formatted);
+      break;
   }
 }
 
@@ -73,8 +99,10 @@ export const logger = {
     log('debug', service, message, context),
   info: (service: string, message: string, context?: Record<string, unknown>) =>
     log('info', service, message, context),
-  warn: (service: string, message: string, context?: Record<string, unknown>) =>
-    log('warn', service, message, context),
+  // `warn` accepts an error like `error` does: a degraded path is frequently
+  // reported with the exception that caused it.
+  warn: (service: string, message: string, context?: Record<string, unknown>, err?: unknown) =>
+    log('warn', service, message, context, err),
   error: (service: string, message: string, context?: Record<string, unknown>, err?: unknown) =>
     log('error', service, message, context, err),
 };

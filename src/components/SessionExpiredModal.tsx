@@ -10,7 +10,9 @@ export default function SessionExpiredModal() {
 
   useEffect(() => {
     const supabase = createClient();
-    const { data: { subscription } } = supabase?.auth?.onAuthStateChange((event) => {
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event) => {
       if (event === 'TOKEN_REFRESHED') {
         setShow(false);
       }

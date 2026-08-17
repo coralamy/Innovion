@@ -16,6 +16,8 @@ export interface TimeEntryRow {
   break_minutes: number;
   total_hours: number | null;
   entry_status: 'active' | 'on-break' | 'completed';
+  contractor_id: string | null;
+  hourly_rate: number | null;
   company_id: string | null;
   created_at: string;
 }
@@ -33,6 +35,18 @@ export interface TimeEntry {
   breakMinutes: number;
   totalHours: number | null;
   status: 'active' | 'on-break' | 'completed';
+  /**
+   * The contractor this entry belongs to. The column already existed and was
+   * never populated, so timesheet approval and invoicing had to match
+   * contractors by display name — ambiguous, and broken by a rename.
+   */
+  contractorId?: string | null;
+  /**
+   * The rate agreed at the time the work was done. Stamped at clock-out from
+   * the contractor record so a later rate change does not silently re-price
+   * historical timesheets.
+   */
+  hourlyRate?: number | null;
   companyId?: string | null;
 }
 
@@ -50,6 +64,8 @@ function rowToEntry(row: TimeEntryRow): TimeEntry {
     breakMinutes: row.break_minutes,
     totalHours: row.total_hours,
     status: row.entry_status,
+    contractorId: row.contractor_id ?? null,
+    hourlyRate: row.hourly_rate ?? null,
     companyId: row.company_id,
   };
 }
@@ -63,7 +79,9 @@ function isSchemaError(error: unknown): boolean {
     if (cls === '23') return false;
   }
   if (typeof e.message === 'string') {
-    return /relation.*does not exist|column.*does not exist|function.*does not exist|syntax error/i.test(e.message);
+    return /relation.*does not exist|column.*does not exist|function.*does not exist|syntax error/i.test(
+      e.message
+    );
   }
   return false;
 }
@@ -72,12 +90,20 @@ export const timeEntryService = {
   async getAll(companyId?: string | null): Promise<TimeEntry[]> {
     const supabase = createClient();
     try {
-      let query = supabase.from('time_entries').select('*').order('created_at', { ascending: false });
-      if (companyId) { query = query.eq('company_id', companyId); }
+      let query = supabase
+        .from('time_entries')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (companyId) {
+        query = query.eq('company_id', companyId);
+      }
       const { data, error } = await query;
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('timeEntryService', 'Failed to fetch time entries', { companyId, error: error.message });
+        logger.warn('timeEntryService', 'Failed to fetch time entries', {
+          companyId,
+          error: error.message,
+        });
         return [];
       }
       return (data as TimeEntryRow[]).map(rowToEntry);
@@ -104,18 +130,28 @@ export const timeEntryService = {
           break_minutes: entry.breakMinutes,
           total_hours: entry.totalHours,
           entry_status: entry.status,
+          contractor_id: entry.contractorId ?? null,
+          hourly_rate: entry.hourlyRate ?? null,
           company_id: companyId ?? entry.companyId ?? null,
         })
         .select()
         .single();
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('timeEntryService', 'Failed to create time entry', { contractor: entry.contractor, error: error.message });
+        logger.warn('timeEntryService', 'Failed to create time entry', {
+          contractor: entry.contractor,
+          error: error.message,
+        });
         return null;
       }
       return rowToEntry(data as TimeEntryRow);
     } catch (err: unknown) {
-      logger.error('timeEntryService', 'Schema error creating time entry', { contractor: entry.contractor }, err);
+      logger.error(
+        'timeEntryService',
+        'Schema error creating time entry',
+        { contractor: entry.contractor },
+        err
+      );
       throw err;
     }
   },

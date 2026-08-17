@@ -35,7 +35,11 @@ export default function OfflineBanner() {
     return (
       <div
         className="fixed top-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-600 shadow-lg animate-slide-up"
-        style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)', border: '1px solid rgba(16,185,129,0.25)' }}
+        style={{
+          backgroundColor: 'var(--success-bg)',
+          color: 'var(--success)',
+          border: '1px solid rgba(16,185,129,0.25)',
+        }}
         role="status"
         aria-live="polite"
       >

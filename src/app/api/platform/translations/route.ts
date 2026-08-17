@@ -11,13 +11,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateApiKey, hasScope, unauthorizedResponse, forbiddenResponse } from '@/lib/platformApiAuth';
+import { guardPlatformRequest } from '@/lib/platformApiRoute';
 import { getTranslations, isValidLanguage, DEFAULT_LANGUAGE } from '@/lib/i18n';
+import { addRateLimitHeaders } from '@/lib/rateLimit';
 
 export async function GET(req: NextRequest) {
-  const ctx = await authenticateApiKey(req);
-  if (!ctx) return unauthorizedResponse();
-  if (!hasScope(ctx, 'translations:read')) return forbiddenResponse();
+  // This route previously had NO rate limiting, unlike its siblings.
+  const guard = await guardPlatformRequest(req, 'translations:read');
+  if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
   const langParam = searchParams.get('lang') ?? DEFAULT_LANGUAGE;
@@ -25,5 +26,5 @@ export async function GET(req: NextRequest) {
 
   const translations = getTranslations(lang);
 
-  return NextResponse.json({ data: translations, language: lang });
+  return addRateLimitHeaders(NextResponse.json({ data: translations, language: lang }), guard.rate);
 }

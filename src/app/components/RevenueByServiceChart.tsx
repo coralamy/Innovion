@@ -15,14 +15,28 @@ interface RevenueByServiceChartProps {
 
 const SERVICE_COLORS: Record<string, string> = {
   'Commercial Cleaning': 'var(--accent)',
-  'Maintenance': 'var(--success)',
-  'Inspections': 'var(--warning)',
-  'Emergency': 'var(--danger)',
-  'Other': 'var(--info)',
+  Maintenance: 'var(--success)',
+  Inspections: 'var(--warning)',
+  Emergency: 'var(--danger)',
+  Other: 'var(--info)',
 };
-const FALLBACK_COLORS = ['var(--accent)', 'var(--success)', 'var(--warning)', 'var(--danger)', 'var(--info)'];
+const FALLBACK_COLORS = [
+  'var(--accent)',
+  'var(--success)',
+  'var(--warning)',
+  'var(--danger)',
+  'var(--info)',
+];
 
-const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?: Array<{ name: string; value: number }>; total: number }) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  total,
+}: {
+  active?: boolean;
+  payload?: Array<{ name: string; value: number }>;
+  total: number;
+}) => {
   if (active && payload && payload.length) {
     const item = payload[0];
     const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) : '0.0';
@@ -30,8 +44,7 @@ const CustomTooltip = ({ active, payload, total }: { active?: boolean; payload?:
       <div className="bg-card border border-border rounded-xl p-3 shadow-card-md text-sm">
         <p className="font-600 text-foreground">{item.name}</p>
         <p className="text-muted-foreground mt-1">
-          <span className="font-700 text-foreground">{item.value} jobs</span>
-          {' '}· {pct}%
+          <span className="font-700 text-foreground">{item.value} jobs</span> · {pct}%
         </p>
       </div>
     );
@@ -66,7 +79,15 @@ export default function RevenueByServiceChart({ data = [], loading }: RevenueByS
         <>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={enriched} cx="50%" cy="50%" innerRadius={52} outerRadius={80} paddingAngle={3} dataKey="value">
+              <Pie
+                data={enriched}
+                cx="50%"
+                cy="50%"
+                innerRadius={52}
+                outerRadius={80}
+                paddingAngle={3}
+                dataKey="value"
+              >
                 {enriched.map((entry, idx) => (
                   <Cell key={`cell-${idx}`} fill={entry.color} stroke="transparent" />
                 ))}
@@ -78,7 +99,10 @@ export default function RevenueByServiceChart({ data = [], loading }: RevenueByS
             {enriched.map((item, idx) => (
               <div key={`legend-${idx}`} className="flex items-center justify-between text-xs">
                 <div className="flex items-center gap-2">
-                  <span className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <span
+                    className="w-2.5 h-2.5 rounded-sm flex-shrink-0"
+                    style={{ backgroundColor: item.color }}
+                  />
                   <span className="text-muted-foreground truncate">{item.name}</span>
                 </div>
                 <span className="font-600 text-foreground font-tabular">{item.value} jobs</span>

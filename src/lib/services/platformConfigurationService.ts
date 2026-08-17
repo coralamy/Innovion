@@ -25,11 +25,12 @@
  *     detect schema changes and handle them gracefully.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import type { CountryConfig } from '@/lib/countryConfig';
 import { COUNTRY_CONFIGS } from '@/lib/countryConfig';
 import type { LocalisationSettings } from '@/lib/localisation';
-
 
 // ─── Schema version ───────────────────────────────────────────────────────────
 
@@ -47,6 +48,27 @@ import type { LocalisationSettings } from '@/lib/localisation';
  *           the configHash or configVersion has changed.
  */
 export const PLATFORM_CONFIG_VERSION = '3.0.0';
+
+/**
+ * The Supabase client a configuration read should be performed with.
+ *
+ * DEFECT REMEDIATED (P1 — the Platform API returned no configuration):
+ *   Every method in this service called `createClient()` from
+ *   `@/lib/supabase/client` — the BROWSER client. In the browser that client
+ *   carries the signed-in user's session. Inside a Next.js route handler there
+ *   is no `document` and no `localStorage`, so its cookie adapter returns an
+ *   empty array and PostgREST evaluates the request as `anon`. Under the
+ *   tenant-scoped RLS policies `anon` matches nothing, so every
+ *   /api/platform/* route that reached this service resolved a null
+ *   configuration and answered 404 ORG_NOT_FOUND — for a valid API key, for a
+ *   real organisation.
+ *
+ *   The client is now injectable. Browser callers keep the existing behaviour
+ *   (session-scoped, RLS-enforced). Server routes pass the service-role client
+ *   AFTER they have authenticated the Bearer API key and resolved the tenant it
+ *   is bound to, and every query is scoped to that companyId.
+ */
+export type PlatformDataClient = SupabaseClient;
 
 // ─── Branding ─────────────────────────────────────────────────────────────────
 
@@ -103,10 +125,21 @@ export interface LocalisationConfig extends LocalisationSettings {
 // ─── Licensing ────────────────────────────────────────────────────────────────
 
 export type LicenceModel =
-  | 'direct' |'exclusive_country' |'exclusive_territory' |'master_licence' |'regional_licence' |'white_label' |'strategic_partnership';
+  | 'direct'
+  | 'exclusive_country'
+  | 'exclusive_territory'
+  | 'master_licence'
+  | 'regional_licence'
+  | 'white_label'
+  | 'strategic_partnership';
 
 export type SubscriptionStatus =
-  | 'trialing' |'active' |'past_due' |'cancelled' |'suspended' |'read_only';
+  | 'trialing'
+  | 'active'
+  | 'past_due'
+  | 'cancelled'
+  | 'suspended'
+  | 'read_only';
 
 export interface LicensingConfig {
   /** Commercial licence model under which this organisation operates */
@@ -230,7 +263,12 @@ export interface DigitalProfessionalConfig {
 // ─── Partner Configuration ────────────────────────────────────────────────────
 
 export type PartnerType =
-  | 'country_licensee' |'regional_partner' |'territory_partner' |'certified_implementation_partner' |'strategic_partner' |'direct';
+  | 'country_licensee'
+  | 'regional_partner'
+  | 'territory_partner'
+  | 'certified_implementation_partner'
+  | 'strategic_partner'
+  | 'direct';
 
 export interface TerritoryConfig {
   /** Unique territory identifier */
@@ -531,7 +569,14 @@ export interface ApiClientDescriptor {
   /** Human-readable client name */
   name: string;
   /** Client type classification */
-  type: 'web_platform' | 'workforce' | 'partner_portal' | 'customer_portal' | 'digital_professional' | 'external_api' | 'internal_service';
+  type:
+    | 'web_platform'
+    | 'workforce'
+    | 'partner_portal'
+    | 'customer_portal'
+    | 'digital_professional'
+    | 'external_api'
+    | 'internal_service';
   /** Whether this client is currently active */
   isActive: boolean;
   /** Configuration domains this client is authorised to read */
@@ -732,7 +777,15 @@ export interface ConfigurationManifest {
    */
   compatibleClientTypes: Array<
     | 'web_platform'
-    | 'workforce' |'partner_portal' |'customer_portal' |'digital_professional' |'external_api' |'internal_service' |'desktop_application' |'public_api' |'future_coralamy'
+    | 'workforce'
+    | 'partner_portal'
+    | 'customer_portal'
+    | 'digital_professional'
+    | 'external_api'
+    | 'internal_service'
+    | 'desktop_application'
+    | 'public_api'
+    | 'future_coralamy'
   >;
 
   /**
@@ -859,8 +912,13 @@ const DEFAULT_SECURITY: SecurityPoliciesConfig = {
   ssoEnabled: false,
   ssoProvider: null,
   readOnlyAllowedPaths: [
-    '/dashboard', '/reports', '/time-tracking', '/documents',
-    '/profile', '/settings', '/billing',
+    '/dashboard',
+    '/reports',
+    '/time-tracking',
+    '/documents',
+    '/profile',
+    '/settings',
+    '/billing',
   ],
   readOnlyTriggerStatuses: ['read_only', 'suspended', 'cancelled', 'past_due'],
 };
@@ -947,38 +1005,241 @@ const DEFAULT_AUDIT_COMPLIANCE: AuditComplianceConfig = {
 };
 
 const CORE_MODULES: ModuleConfig[] = [
-  { id: 'jobs',              name: 'Jobs',              description: 'Job scheduling and management',          status: 'enabled',      requiresAddOn: false, routes: ['/jobs', '/recurring-jobs', '/scheduling'] },
-  { id: 'clients',           name: 'Clients',           description: 'Client relationship management',         status: 'enabled',      requiresAddOn: false, routes: ['/clients'] },
-  { id: 'employees',         name: 'Employees',         description: 'Employee records and management',        status: 'enabled',      requiresAddOn: false, routes: ['/employees'] },
-  { id: 'contractors',       name: 'Contractors',       description: 'Contractor management',                  status: 'enabled',      requiresAddOn: false, routes: ['/contractors'] },
-  { id: 'sites',             name: 'Sites',             description: 'Site and location management',           status: 'enabled',      requiresAddOn: false, routes: ['/sites'] },
-  { id: 'compliance',        name: 'Compliance',        description: 'Compliance tracking and alerts',         status: 'enabled',      requiresAddOn: false, routes: ['/compliance'] },
-  { id: 'documents',         name: 'Documents',         description: 'Document storage and management',        status: 'enabled',      requiresAddOn: false, routes: ['/documents'] },
-  { id: 'inventory',         name: 'Inventory',         description: 'Inventory and asset tracking',           status: 'enabled',      requiresAddOn: false, routes: ['/inventory'] },
-  { id: 'vehicles',          name: 'Vehicles',          description: 'Fleet and vehicle management',           status: 'enabled',      requiresAddOn: false, routes: ['/vehicles'] },
-  { id: 'incidents',         name: 'Incidents',         description: 'Incident reporting and management',      status: 'enabled',      requiresAddOn: false, routes: ['/incidents'] },
-  { id: 'checklists',        name: 'Checklists',        description: 'Operational checklists and templates',   status: 'enabled',      requiresAddOn: false, routes: ['/checklists', '/checklist-templates'] },
-  { id: 'time_tracking',     name: 'Time Tracking',     description: 'Time entry and timesheet approval',      status: 'enabled',      requiresAddOn: false, routes: ['/time-tracking', '/timesheet-approval'] },
-  { id: 'reports',           name: 'Reports',           description: 'Operational and financial reporting',    status: 'enabled',      requiresAddOn: false, routes: ['/reports'] },
-  { id: 'billing',           name: 'Billing',           description: 'Subscription and billing management',    status: 'enabled',      requiresAddOn: false, routes: ['/billing'] },
-  { id: 'digital_workforce', name: 'Digital Workforce', description: 'AI-powered Digital Professional agents', status: 'coming_soon',  requiresAddOn: true,  routes: [] },
+  {
+    id: 'jobs',
+    name: 'Jobs',
+    description: 'Job scheduling and management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/jobs', '/recurring-jobs', '/scheduling'],
+  },
+  {
+    id: 'clients',
+    name: 'Clients',
+    description: 'Client relationship management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/clients'],
+  },
+  {
+    id: 'employees',
+    name: 'Employees',
+    description: 'Employee records and management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/employees'],
+  },
+  {
+    id: 'contractors',
+    name: 'Contractors',
+    description: 'Contractor management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/contractors'],
+  },
+  {
+    id: 'sites',
+    name: 'Sites',
+    description: 'Site and location management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/sites'],
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance',
+    description: 'Compliance tracking and alerts',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/compliance'],
+  },
+  {
+    id: 'documents',
+    name: 'Documents',
+    description: 'Document storage and management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/documents'],
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Inventory and asset tracking',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/inventory'],
+  },
+  {
+    id: 'vehicles',
+    name: 'Vehicles',
+    description: 'Fleet and vehicle management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/vehicles'],
+  },
+  {
+    id: 'incidents',
+    name: 'Incidents',
+    description: 'Incident reporting and management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/incidents'],
+  },
+  {
+    id: 'checklists',
+    name: 'Checklists',
+    description: 'Operational checklists and templates',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/checklists', '/checklist-templates'],
+  },
+  {
+    id: 'time_tracking',
+    name: 'Time Tracking',
+    description: 'Time entry and timesheet approval',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/time-tracking', '/timesheet-approval'],
+  },
+  {
+    id: 'reports',
+    name: 'Reports',
+    description: 'Operational and financial reporting',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/reports'],
+  },
+  {
+    id: 'billing',
+    name: 'Billing',
+    description: 'Subscription and billing management',
+    status: 'enabled',
+    requiresAddOn: false,
+    routes: ['/billing'],
+  },
+  {
+    id: 'digital_workforce',
+    name: 'Digital Workforce',
+    description: 'AI-powered Digital Professional agents',
+    status: 'coming_soon',
+    requiresAddOn: true,
+    routes: [],
+  },
 ];
 
 const CORE_FEATURE_FLAGS: FeatureFlag[] = [
-  { key: 'recurring_jobs',        name: 'Recurring Jobs',          status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'scheduling_calendar',   name: 'Scheduling Calendar',     status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'contractor_invoices',   name: 'Contractor Invoices',     status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'document_storage',      name: 'Document Storage',        status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'compliance_alerts',     name: 'Compliance Alerts',       status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'rbac',                  name: 'Role-Based Access Control', status: 'enabled',    planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'multi_language',        name: 'Multi-Language Support',  status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'workforce_app',         name: 'Workforce Application',   status: 'enabled',      planGated: false, minimumPlan: null,         rolloutPercentage: 100 },
-  { key: 'customer_portal',       name: 'Customer Portal',         status: 'coming_soon',  planGated: true,  minimumPlan: 'professional', rolloutPercentage: 0  },
-  { key: 'partner_portal',        name: 'Partner Portal',          status: 'coming_soon',  planGated: true,  minimumPlan: 'enterprise', rolloutPercentage: 0   },
-  { key: 'ai_scheduling',         name: 'AI Scheduling Assistant', status: 'coming_soon',  planGated: true,  minimumPlan: 'enterprise', rolloutPercentage: 0   },
-  { key: 'white_label',           name: 'White Label Branding',    status: 'coming_soon',  planGated: true,  minimumPlan: 'enterprise', rolloutPercentage: 0   },
-  { key: 'sso',                   name: 'Single Sign-On (SSO)',     status: 'coming_soon',  planGated: true,  minimumPlan: 'enterprise', rolloutPercentage: 0   },
-  { key: 'data_residency',        name: 'Data Residency Controls', status: 'coming_soon',  planGated: true,  minimumPlan: 'enterprise', rolloutPercentage: 0   },
+  {
+    key: 'recurring_jobs',
+    name: 'Recurring Jobs',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'scheduling_calendar',
+    name: 'Scheduling Calendar',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'contractor_invoices',
+    name: 'Contractor Invoices',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'document_storage',
+    name: 'Document Storage',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'compliance_alerts',
+    name: 'Compliance Alerts',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'rbac',
+    name: 'Role-Based Access Control',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'multi_language',
+    name: 'Multi-Language Support',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'workforce_app',
+    name: 'Workforce Application',
+    status: 'enabled',
+    planGated: false,
+    minimumPlan: null,
+    rolloutPercentage: 100,
+  },
+  {
+    key: 'customer_portal',
+    name: 'Customer Portal',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'professional',
+    rolloutPercentage: 0,
+  },
+  {
+    key: 'partner_portal',
+    name: 'Partner Portal',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'enterprise',
+    rolloutPercentage: 0,
+  },
+  {
+    key: 'ai_scheduling',
+    name: 'AI Scheduling Assistant',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'enterprise',
+    rolloutPercentage: 0,
+  },
+  {
+    key: 'white_label',
+    name: 'White Label Branding',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'enterprise',
+    rolloutPercentage: 0,
+  },
+  {
+    key: 'sso',
+    name: 'Single Sign-On (SSO)',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'enterprise',
+    rolloutPercentage: 0,
+  },
+  {
+    key: 'data_residency',
+    name: 'Data Residency Controls',
+    status: 'coming_soon',
+    planGated: true,
+    minimumPlan: 'enterprise',
+    rolloutPercentage: 0,
+  },
 ];
 
 // ─── Service ──────────────────────────────────────────────────────────────────
@@ -998,19 +1259,25 @@ export const platformConfigurationService = {
    * @param companyId - The organisation's unique identifier
    * @returns Full PlatformOrganisationConfig, or null if the company is not found
    */
-  async getOrganisationConfig(companyId: string): Promise<PlatformOrganisationConfig | null> {
-    const supabase = createClient();
+  async getOrganisationConfig(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<PlatformOrganisationConfig | null> {
+    const supabase = client ?? createClient();
 
     // ── Fetch all required data in parallel ──────────────────────────────────
-    const [
-      companyResult,
-      settingsResult,
-      localisationResult,
-      subscriptionResult,
-      partnerResult,
-    ] = await Promise.all([
-      supabase.from('companies').select('*').eq('id', companyId).maybeSingle(),supabase.from('settings').select('*').eq('company_id', companyId).maybeSingle(),supabase.from('company_localisation').select('*').eq('company_id', companyId).maybeSingle(),supabase.from('subscriptions').select('*').eq('company_id', companyId).maybeSingle(),supabase.from('companies').select('partner_id, territory_id, country_code, customer_ownership').eq('id', companyId).maybeSingle(),
-    ]);
+    const [companyResult, settingsResult, localisationResult, subscriptionResult, partnerResult] =
+      await Promise.all([
+        supabase.from('companies').select('*').eq('id', companyId).maybeSingle(),
+        supabase.from('settings').select('*').eq('company_id', companyId).maybeSingle(),
+        supabase.from('company_localisation').select('*').eq('company_id', companyId).maybeSingle(),
+        supabase.from('subscriptions').select('*').eq('company_id', companyId).maybeSingle(),
+        supabase
+          .from('companies')
+          .select('partner_id, territory_id, country_code, customer_ownership')
+          .eq('id', companyId)
+          .maybeSingle(),
+      ]);
 
     const company = companyResult.data;
     if (!company) return null;
@@ -1029,7 +1296,8 @@ export const platformConfigurationService = {
       organisationName: company.name ?? settings?.company_name ?? '',
       primaryColour: company.primary_colour ?? DEFAULT_BRANDING.primaryColour,
       secondaryColour: company.secondary_colour ?? DEFAULT_BRANDING.secondaryColour,
-      logoUrl: company.logo_url ?? null,
+      // `companies.logo` is the real column; `logo_url` never existed.
+      logoUrl: company.logo ?? null,
       faviconUrl: company.favicon_url ?? null,
       customDomain: company.custom_domain ?? null,
       showPoweredBy: company.show_powered_by ?? true,
@@ -1042,25 +1310,53 @@ export const platformConfigurationService = {
       language: localisation?.language ?? countryConfig.defaultLanguage,
       currencyCode: localisation?.currency_code ?? countryConfig.defaultCurrency.code,
       currencySymbol: localisation?.currency_symbol ?? countryConfig.defaultCurrency.symbol,
-      currencyDecimalPrecision: localisation?.currency_decimal_precision ?? countryConfig.defaultCurrency.decimalPrecision,
-      thousandsSeparator: localisation?.thousands_separator ?? countryConfig.defaultCurrency.thousandsSeparator,
-      decimalSeparator: localisation?.decimal_separator ?? countryConfig.defaultCurrency.decimalSeparator,
-      currencySymbolPosition: (localisation?.currency_symbol_position ?? countryConfig.defaultCurrency.symbolPosition) as 'before' | 'after',
+      currencyDecimalPrecision:
+        localisation?.currency_decimal_precision ?? countryConfig.defaultCurrency.decimalPrecision,
+      thousandsSeparator:
+        localisation?.thousands_separator ?? countryConfig.defaultCurrency.thousandsSeparator,
+      decimalSeparator:
+        localisation?.decimal_separator ?? countryConfig.defaultCurrency.decimalSeparator,
+      currencySymbolPosition: (localisation?.currency_symbol_position ??
+        countryConfig.defaultCurrency.symbolPosition) as 'before' | 'after',
       dateFormat: localisation?.date_format ?? countryConfig.defaultDateFormat,
       timeFormat: (localisation?.time_format ?? countryConfig.defaultTimeFormat) as '12h' | '24h',
-      firstDayOfWeek: (localisation?.first_day_of_week ?? countryConfig.defaultFirstDayOfWeek) as 0 | 1 | 6,
-      measurementSystem: (localisation?.measurement_system ?? countryConfig.measurementSystem) as 'metric' | 'imperial',
+      firstDayOfWeek: (localisation?.first_day_of_week ?? countryConfig.defaultFirstDayOfWeek) as
+        | 0
+        | 1
+        | 6,
+      measurementSystem: (localisation?.measurement_system ?? countryConfig.measurementSystem) as
+        | 'metric'
+        | 'imperial',
       country: countryCode,
       countryConfig,
     };
 
     // ── Licensing ─────────────────────────────────────────────────────────────
-    const readOnlyStatuses: SubscriptionStatus[] = ['read_only', 'suspended', 'cancelled', 'past_due'];
+    const readOnlyStatuses: SubscriptionStatus[] = [
+      'read_only',
+      'suspended',
+      'cancelled',
+      'past_due',
+    ];
     const activeStatuses: SubscriptionStatus[] = ['active', 'trialing'];
-    const subStatus = (subscription?.status ?? null) as SubscriptionStatus | null;
+    // The column is `sub_status`; `subscription.status` is always undefined, so
+    // every organisation previously resolved to status null → isActive false.
+    const subStatus = (subscription?.sub_status ?? null) as SubscriptionStatus | null;
+
+    // The licence model lives on the company's PARTNER, not on the company.
+    let licenceModel: LicenceModel = 'direct';
+    if (partnerMeta?.partner_id) {
+      const { data: partnerLicence } = await supabase
+        .from('partners')
+        .select('licence_model')
+        .eq('id', partnerMeta.partner_id)
+        .maybeSingle();
+      if (partnerLicence?.licence_model)
+        licenceModel = partnerLicence.licence_model as LicenceModel;
+    }
 
     const licensing: LicensingConfig = {
-      licenceModel: (company.licence_model ?? 'direct') as LicenceModel,
+      licenceModel,
       planName: subscription?.plan_name ?? null,
       status: subStatus,
       maxUsers: subscription?.max_users ?? null,
@@ -1070,17 +1366,19 @@ export const platformConfigurationService = {
       isActive: activeStatuses.includes(subStatus as SubscriptionStatus),
       trialEndsAt: subscription?.trial_ends_at ?? null,
       currentPeriodEnd: subscription?.current_period_end ?? null,
-      productId: company.product_id ?? 'innovion',
-      productName: company.product_name ?? 'Innovion',
+      // Product identity is platform-wide; `companies` carries no product columns.
+      productId: 'innovion',
+      productName: 'Innovion',
     };
 
     // ── Modules ───────────────────────────────────────────────────────────────
     const planFeatureSet = new Set<string>(licensing.planFeatures);
     const modulesAvailable: ModuleConfig[] = CORE_MODULES.map((mod) => ({
       ...mod,
-      status: mod.requiresAddOn && !planFeatureSet.has(mod.id)
-        ? ('disabled' as ModuleStatus)
-        : mod.status,
+      status:
+        mod.requiresAddOn && !planFeatureSet.has(mod.id)
+          ? ('disabled' as ModuleStatus)
+          : mod.status,
     }));
 
     const modules: ModulesConfig = {
@@ -1092,11 +1390,13 @@ export const platformConfigurationService = {
     const security: SecurityPoliciesConfig = {
       mfaRequired: settings?.security_two_factor ?? DEFAULT_SECURITY.mfaRequired,
       mfaEnabled: settings?.security_two_factor ?? DEFAULT_SECURITY.mfaEnabled,
-      sessionTimeout: (settings?.security_session_timeout ?? DEFAULT_SECURITY.sessionTimeout) as SessionTimeout,
+      sessionTimeout: (settings?.security_session_timeout ??
+        DEFAULT_SECURITY.sessionTimeout) as SessionTimeout,
       ipWhitelistEnabled: settings?.security_ip_whitelist ?? DEFAULT_SECURITY.ipWhitelistEnabled,
       ipWhitelist: [],
       auditLogEnabled: settings?.security_audit_log ?? DEFAULT_SECURITY.auditLogEnabled,
-      passwordPolicy: (settings?.security_password_policy ?? DEFAULT_SECURITY.passwordPolicy) as PasswordPolicy,
+      passwordPolicy: (settings?.security_password_policy ??
+        DEFAULT_SECURITY.passwordPolicy) as PasswordPolicy,
       ssoEnabled: false,
       ssoProvider: null,
       readOnlyAllowedPaths: DEFAULT_SECURITY.readOnlyAllowedPaths,
@@ -1124,34 +1424,54 @@ export const platformConfigurationService = {
 
     if (partnerMeta?.partner_id) {
       const [partnerRow, territoryRow] = await Promise.all([
-        supabase.from('partners').select('id, name, partner_type').eq('id', partnerMeta.partner_id).maybeSingle(),
+        // `partners` has partner_name, not name.
+        supabase
+          .from('partners')
+          .select('id, partner_name, partner_type')
+          .eq('id', partnerMeta.partner_id)
+          .maybeSingle(),
         partnerMeta.territory_id
-          ? supabase.from('territories').select('*').eq('id', partnerMeta.territory_id).maybeSingle()
+          ? supabase
+              .from('territories')
+              .select('*')
+              .eq('id', partnerMeta.territory_id)
+              .maybeSingle()
           : Promise.resolve({ data: null }),
       ]);
 
       const [partnerProductsRow, revenueRow] = await Promise.all([
-        supabase.from('partner_products').select('product_id').eq('partner_id', partnerMeta.partner_id),
-        supabase.from('partner_revenue').select('mrr, arr').eq('company_id', companyId).maybeSingle(),
+        supabase
+          .from('partner_products')
+          .select('product_id')
+          .eq('partner_id', partnerMeta.partner_id),
+        // The columns are mrr_amount / arr_amount.
+        supabase
+          .from('partner_revenue')
+          .select('mrr_amount, arr_amount')
+          .eq('company_id', companyId)
+          .order('period_start', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
       ]);
 
       partnerConfig = {
         hasPartner: true,
         partnerId: partnerRow.data?.id ?? partnerMeta.partner_id,
-        partnerName: partnerRow.data?.name ?? null,
+        partnerName: partnerRow.data?.partner_name ?? null,
         partnerType: (partnerRow.data?.partner_type ?? null) as PartnerType | null,
         territory: territoryRow.data
           ? {
+              // territories exposes territory_name / region_code / exclusivity.
               id: territoryRow.data.id,
-              name: territoryRow.data.name,
+              name: territoryRow.data.territory_name,
               countryCode: territoryRow.data.country_code,
-              region: territoryRow.data.region ?? null,
-              isExclusive: territoryRow.data.is_exclusive ?? false,
+              region: territoryRow.data.region_code ?? null,
+              isExclusive: territoryRow.data.exclusivity === 'exclusive',
             }
           : null,
         customerOwnership: partnerMeta.customer_ownership ?? 'direct',
-        mrr: revenueRow.data?.mrr ?? null,
-        arr: revenueRow.data?.arr ?? null,
+        mrr: revenueRow.data?.mrr_amount ?? null,
+        arr: revenueRow.data?.arr_amount ?? null,
         partnerProducts: (partnerProductsRow.data ?? []).map((r: any) => r.product_id),
       };
     }
@@ -1159,9 +1479,10 @@ export const platformConfigurationService = {
     // ── Feature Registry ──────────────────────────────────────────────────────
     const featureFlags: FeatureFlag[] = CORE_FEATURE_FLAGS.map((flag) => ({
       ...flag,
-      status: flag.planGated && !planFeatureSet.has(flag.key)
-        ? ('disabled' as FeatureStatus)
-        : flag.status,
+      status:
+        flag.planGated && !planFeatureSet.has(flag.key)
+          ? ('disabled' as FeatureStatus)
+          : flag.status,
     }));
 
     const featureRegistry: FeatureRegistryConfig = {
@@ -1228,27 +1549,34 @@ export const platformConfigurationService = {
     };
 
     // ── Customer Portal Configuration ─────────────────────────────────────────
-    const customerPortalEnabled = featureFlags.find(f => f.key === 'customer_portal')?.status === 'enabled';
+    const customerPortalEnabled =
+      featureFlags.find((f) => f.key === 'customer_portal')?.status === 'enabled';
     const customerPortalConfig: CustomerPortalConfig = {
       ...DEFAULT_CUSTOMER_PORTAL,
       enabled: customerPortalEnabled,
-      portalBranding: customerPortalEnabled ? {
-        primaryColour: branding.primaryColour,
-        secondaryColour: branding.secondaryColour,
-        logoUrl: branding.logoUrl,
-      } : null,
+      portalBranding: customerPortalEnabled
+        ? {
+            primaryColour: branding.primaryColour,
+            secondaryColour: branding.secondaryColour,
+            logoUrl: branding.logoUrl,
+          }
+        : null,
     };
 
     // ── Partner Portal Configuration ──────────────────────────────────────────
-    const partnerPortalEnabled = featureFlags.find(f => f.key === 'partner_portal')?.status === 'enabled';
+    const partnerPortalEnabled =
+      featureFlags.find((f) => f.key === 'partner_portal')?.status === 'enabled';
     const partnerPortalConfig: PartnerPortalConfig = {
       ...DEFAULT_PARTNER_PORTAL,
       enabled: partnerPortalEnabled && partnerConfig.hasPartner,
-      partnerBranding: (partnerPortalEnabled && partnerConfig.hasPartner) ? {
-        primaryColour: branding.primaryColour,
-        secondaryColour: branding.secondaryColour,
-        logoUrl: branding.logoUrl,
-      } : null,
+      partnerBranding:
+        partnerPortalEnabled && partnerConfig.hasPartner
+          ? {
+              primaryColour: branding.primaryColour,
+              secondaryColour: branding.secondaryColour,
+              logoUrl: branding.logoUrl,
+            }
+          : null,
     };
 
     // ── API Clients Registry ──────────────────────────────────────────────────
@@ -1271,20 +1599,22 @@ export const platformConfigurationService = {
         lastSeenAt: null,
       },
       // Map active API keys to client descriptors
-      ...(apiKeys ?? []).map((key: any): ApiClientDescriptor => ({
-        clientId: key.id,
-        name: key.label,
-        type: inferClientType(key.label, key.scopes),
-        isActive: key.is_active,
-        authorisedDomains: inferAuthorisedDomains(key.scopes),
-        keyPrefix: key.key_prefix,
-        lastSeenAt: key.last_used_at ?? null,
-      })),
+      ...(apiKeys ?? []).map(
+        (key: any): ApiClientDescriptor => ({
+          clientId: key.id,
+          name: key.label,
+          type: inferClientType(key.label, key.scopes),
+          isActive: key.is_active,
+          authorisedDomains: inferAuthorisedDomains(key.scopes),
+          keyPrefix: key.key_prefix,
+          lastSeenAt: key.last_used_at ?? null,
+        })
+      ),
     ];
 
     const apiClientsConfig: ApiClientsConfig = {
       clients: registeredClients,
-      activeClientCount: registeredClients.filter(c => c.isActive).length,
+      activeClientCount: registeredClients.filter((c) => c.isActive).length,
     };
 
     // ── Data Governance ───────────────────────────────────────────────────────
@@ -1293,7 +1623,20 @@ export const platformConfigurationService = {
       // Derive region from localisation
       dataResidencyRegion: resolveDataResidencyRegion(countryCode),
       // GDPR applies to EU/UK organisations
-      gdprEnabled: ['GB', 'DE', 'FR', 'NL', 'IE', 'SE', 'DK', 'FI', 'NO', 'AT', 'BE', 'CH'].includes(countryCode),
+      gdprEnabled: [
+        'GB',
+        'DE',
+        'FR',
+        'NL',
+        'IE',
+        'SE',
+        'DK',
+        'FI',
+        'NO',
+        'AT',
+        'BE',
+        'CH',
+      ].includes(countryCode),
     };
 
     // ── Audit & Compliance Policy ─────────────────────────────────────────────
@@ -1364,19 +1707,33 @@ export const platformConfigurationService = {
    * Retrieve only the branding configuration for an organisation.
    * Lightweight alternative when only branding data is needed.
    */
-  async getBranding(companyId: string): Promise<BrandingConfig | null> {
-    const supabase = createClient();
-    const { data } = await supabase
+  async getBranding(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<BrandingConfig | null> {
+    const supabase = client ?? createClient();
+    // `logo` is the existing column; `logo_url` never existed. The remaining
+    // branding columns were added by migration 20260817010000.
+    const { data, error } = await supabase
       .from('companies')
-      .select('name, primary_colour, secondary_colour, logo_url, favicon_url, custom_domain, show_powered_by')
+      .select(
+        'name, logo, primary_colour, secondary_colour, favicon_url, custom_domain, show_powered_by'
+      )
       .eq('id', companyId)
       .maybeSingle();
+    if (error) {
+      logger.error('platformConfigurationService', 'getBranding failed', {
+        companyId,
+        error: error.message,
+      });
+      return null;
+    }
     if (!data) return null;
     return {
       organisationName: data.name ?? '',
       primaryColour: data.primary_colour ?? DEFAULT_BRANDING.primaryColour,
       secondaryColour: data.secondary_colour ?? DEFAULT_BRANDING.secondaryColour,
-      logoUrl: data.logo_url ?? null,
+      logoUrl: data.logo ?? null,
       faviconUrl: data.favicon_url ?? null,
       customDomain: data.custom_domain ?? null,
       showPoweredBy: data.show_powered_by ?? true,
@@ -1387,22 +1744,45 @@ export const platformConfigurationService = {
    * Retrieve only the licensing configuration for an organisation.
    * Lightweight alternative when only subscription/plan data is needed.
    */
-  async getLicensing(companyId: string): Promise<LicensingConfig | null> {
-    const supabase = createClient();
+  async getLicensing(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<LicensingConfig | null> {
+    const supabase = client ?? createClient();
+    // `companies` has no licence_model / product_id / product_name column —
+    // those queries silently returned null for every organisation. The licence
+    // model belongs to the company's PARTNER (public.partners.licence_model);
+    // a company with no partner is 'direct'. Product identity is platform-wide.
     const [companyResult, subscriptionResult] = await Promise.all([
-      supabase.from('companies').select('licence_model, product_id, product_name').eq('id', companyId).maybeSingle(),
+      supabase.from('companies').select('id, partner_id').eq('id', companyId).maybeSingle(),
       supabase.from('subscriptions').select('*').eq('company_id', companyId).maybeSingle(),
     ]);
     const company = companyResult.data;
     const subscription = subscriptionResult.data;
     if (!company) return null;
 
-    const readOnlyStatuses: SubscriptionStatus[] = ['read_only', 'suspended', 'cancelled', 'past_due'];
+    let licenceModel: LicenceModel = 'direct';
+    if (company.partner_id) {
+      const { data: partner } = await supabase
+        .from('partners')
+        .select('licence_model')
+        .eq('id', company.partner_id)
+        .maybeSingle();
+      if (partner?.licence_model) licenceModel = partner.licence_model as LicenceModel;
+    }
+
+    const readOnlyStatuses: SubscriptionStatus[] = [
+      'read_only',
+      'suspended',
+      'cancelled',
+      'past_due',
+    ];
     const activeStatuses: SubscriptionStatus[] = ['active', 'trialing'];
-    const subStatus = (subscription?.status ?? null) as SubscriptionStatus | null;
+    // The column is `sub_status`, not `status`.
+    const subStatus = (subscription?.sub_status ?? null) as SubscriptionStatus | null;
 
     return {
-      licenceModel: (company.licence_model ?? 'direct') as LicenceModel,
+      licenceModel,
       planName: subscription?.plan_name ?? null,
       status: subStatus,
       maxUsers: subscription?.max_users ?? null,
@@ -1412,19 +1792,25 @@ export const platformConfigurationService = {
       isActive: activeStatuses.includes(subStatus as SubscriptionStatus),
       trialEndsAt: subscription?.trial_ends_at ?? null,
       currentPeriodEnd: subscription?.current_period_end ?? null,
-      productId: company.product_id ?? 'innovion',
-      productName: company.product_name ?? 'Innovion',
+      // Product identity is platform-wide; `companies` carries no product columns.
+      productId: 'innovion',
+      productName: 'Innovion',
     };
   },
 
   /**
    * Retrieve only the security policies for an organisation.
    */
-  async getSecurityPolicies(companyId: string): Promise<SecurityPoliciesConfig | null> {
-    const supabase = createClient();
+  async getSecurityPolicies(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<SecurityPoliciesConfig | null> {
+    const supabase = client ?? createClient();
     const { data: settings } = await supabase
       .from('settings')
-      .select('security_two_factor, security_session_timeout, security_ip_whitelist, security_audit_log, security_password_policy')
+      .select(
+        'security_two_factor, security_session_timeout, security_ip_whitelist, security_audit_log, security_password_policy'
+      )
       .eq('company_id', companyId)
       .maybeSingle();
     if (!settings) return DEFAULT_SECURITY;
@@ -1447,8 +1833,11 @@ export const platformConfigurationService = {
    * Retrieve the feature registry for an organisation.
    * Merges platform-wide flags with organisation-specific overrides.
    */
-  async getFeatureRegistry(companyId: string): Promise<FeatureRegistryConfig> {
-    const supabase = createClient();
+  async getFeatureRegistry(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<FeatureRegistryConfig> {
+    const supabase = client ?? createClient();
     const { data: subscription } = await supabase
       .from('subscriptions')
       .select('features')
@@ -1458,9 +1847,10 @@ export const platformConfigurationService = {
     const planFeatureSet = new Set<string>(subscription?.features ?? []);
     const flags: FeatureFlag[] = CORE_FEATURE_FLAGS.map((flag) => ({
       ...flag,
-      status: flag.planGated && !planFeatureSet.has(flag.key)
-        ? ('disabled' as FeatureStatus)
-        : flag.status,
+      status:
+        flag.planGated && !planFeatureSet.has(flag.key)
+          ? ('disabled' as FeatureStatus)
+          : flag.status,
     }));
 
     return {
@@ -1473,27 +1863,40 @@ export const platformConfigurationService = {
    * Retrieve the Workforce operational configuration for an organisation.
    * The Workforce application must call this rather than maintaining its own config.
    */
-  async getWorkforceConfig(companyId: string): Promise<WorkforceConfig> {
-    const supabase = createClient();
+  async getWorkforceConfig(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<WorkforceConfig> {
+    const supabase = client ?? createClient();
     const [companyResult, subscriptionResult] = await Promise.all([
-      supabase.from('companies').select('primary_colour, secondary_colour, logo_url').eq('id', companyId).maybeSingle(),
-      supabase.from('subscriptions').select('status, plan_name').eq('company_id', companyId).maybeSingle(),
+      supabase
+        .from('companies')
+        .select('primary_colour, secondary_colour, logo')
+        .eq('id', companyId)
+        .maybeSingle(),
+      supabase
+        .from('subscriptions')
+        .select('sub_status, plan_name')
+        .eq('company_id', companyId)
+        .maybeSingle(),
     ]);
 
     const company = companyResult.data;
     const subscription = subscriptionResult.data;
     const readOnlyStatuses = ['read_only', 'suspended', 'cancelled', 'past_due'];
-    const isReadOnly = readOnlyStatuses.includes(subscription?.status ?? '');
+    const isReadOnly = readOnlyStatuses.includes(subscription?.sub_status ?? '');
 
     return {
       ...DEFAULT_WORKFORCE,
       enabled: !isReadOnly,
       scheduleDataSyncDays: subscription?.plan_name === 'enterprise' ? 30 : 14,
-      workforceBranding: company ? {
-        primaryColour: company.primary_colour ?? DEFAULT_BRANDING.primaryColour,
-        secondaryColour: company.secondary_colour ?? DEFAULT_BRANDING.secondaryColour,
-        logoUrl: company.logo_url ?? null,
-      } : null,
+      workforceBranding: company
+        ? {
+            primaryColour: company.primary_colour ?? DEFAULT_BRANDING.primaryColour,
+            secondaryColour: company.secondary_colour ?? DEFAULT_BRANDING.secondaryColour,
+            logoUrl: company.logo ?? null,
+          }
+        : null,
     };
   },
 
@@ -1501,8 +1904,12 @@ export const platformConfigurationService = {
    * Check whether a specific feature flag is enabled for an organisation.
    * Convenience method — avoids loading the full config for a single check.
    */
-  async isFeatureEnabled(companyId: string, featureKey: string): Promise<boolean> {
-    const registry = await this.getFeatureRegistry(companyId);
+  async isFeatureEnabled(
+    companyId: string,
+    featureKey: string,
+    client?: PlatformDataClient
+  ): Promise<boolean> {
+    const registry = await this.getFeatureRegistry(companyId, client);
     return registry.enabledKeys.includes(featureKey);
   },
 
@@ -1518,8 +1925,11 @@ export const platformConfigurationService = {
    *   2. If unchanged → use cached configuration
    *   3. If changed → fetch full configuration and update cache
    */
-  async getManifest(companyId: string): Promise<ConfigurationManifest | null> {
-    const supabase = createClient();
+  async getManifest(
+    companyId: string,
+    client?: PlatformDataClient
+  ): Promise<ConfigurationManifest | null> {
+    const supabase = client ?? createClient();
     const { data: company } = await supabase
       .from('companies')
       .select('id, updated_at')
@@ -1615,10 +2025,7 @@ async function generateConfigHash(payload: Record<string, unknown>): Promise<str
  * Infer the client type from the API key label and scopes.
  * This is a best-effort classification for the API clients registry.
  */
-function inferClientType(
-  label: string,
-  scopes: string[]
-): ApiClientDescriptor['type'] {
+function inferClientType(label: string, scopes: string[]): ApiClientDescriptor['type'] {
   const lower = label.toLowerCase();
   if (lower.includes('workforce')) return 'workforce';
   if (lower.includes('partner')) return 'partner_portal';
@@ -1637,16 +2044,16 @@ function inferAuthorisedDomains(scopes: string[]): string[] {
     return platformConfigurationService.getConfigDomains();
   }
   const domainMap: Record<string, string[]> = {
-    'localisation:read':    ['localisation'],
-    'country-config:read':  ['localisation'],
-    'business-rules:read':  ['licensing', 'modules', 'featureRegistry'],
-    'tenancy:read':         ['organisationalHierarchy', 'security'],
-    'partner-config:read':  ['partner', 'partnerPortalConfig'],
-    'translations:read':    ['localisation'],
+    'localisation:read': ['localisation'],
+    'country-config:read': ['localisation'],
+    'business-rules:read': ['licensing', 'modules', 'featureRegistry'],
+    'tenancy:read': ['organisationalHierarchy', 'security'],
+    'partner-config:read': ['partner', 'partnerPortalConfig'],
+    'translations:read': ['localisation'],
   };
   const domains = new Set<string>();
   for (const scope of scopes) {
-    for (const d of (domainMap[scope] ?? [])) {
+    for (const d of domainMap[scope] ?? []) {
       domains.add(d);
     }
   }

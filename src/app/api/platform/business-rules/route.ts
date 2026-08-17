@@ -12,16 +12,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateApiKey, hasScope, unauthorizedResponse, forbiddenResponse } from '@/lib/platformApiAuth';
-import { createClient } from '@/lib/supabase/server';
+import { guardPlatformRequest } from '@/lib/platformApiRoute';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/lib/logger';
-import {
-  checkRateLimit,
-  getRequestIdentifier,
-  RATE_LIMIT_CONFIGS,
-  rateLimitExceededResponse,
-  addRateLimitHeaders,
-} from '@/lib/rateLimit';
+import { addRateLimitHeaders } from '@/lib/rateLimit';
 
 // Role permission matrix — single source of truth
 const ROLE_PERMISSIONS = {
@@ -91,25 +85,27 @@ const READ_ONLY_ALLOWED_PATHS = [
 ];
 
 export async function GET(req: NextRequest) {
-  const identifier = getRequestIdentifier(req);
-  const rlResult = checkRateLimit(identifier, RATE_LIMIT_CONFIGS.platformApi);
-  if (!rlResult.success) return rateLimitExceededResponse(rlResult);
-
-  const ctx = await authenticateApiKey(req);
-  if (!ctx) return unauthorizedResponse();
-  if (!hasScope(ctx, 'business-rules:read')) return forbiddenResponse();
+  const guard = await guardPlatformRequest(req, 'business-rules:read');
+  if (!guard.ok) return guard.response;
+  const { ctx, rate: rlResult } = guard;
 
   try {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
 
     const { data: subscription, error } = await supabase
       .from('subscriptions')
-      .select('plan_name, status, max_users, max_jobs, features, trial_ends_at, current_period_end')
+      // The column is sub_status; status does not exist on subscriptions.
+      .select(
+        'plan_name, sub_status, max_users, max_jobs, features, trial_ends_at, current_period_end'
+      )
       .eq('company_id', ctx.companyId)
       .maybeSingle();
 
     if (error) {
-      logger.warn('api/platform/business-rules', 'Failed to fetch subscription', { companyId: ctx.companyId, error: error.message });
+      logger.warn('api/platform/business-rules', 'Failed to fetch subscription', {
+        companyId: ctx.companyId,
+        error: error.message,
+      });
     }
 
     const response = NextResponse.json({
@@ -120,14 +116,14 @@ export async function GET(req: NextRequest) {
         },
         subscription: {
           planName: subscription?.plan_name ?? null,
-          status: subscription?.status ?? null,
+          status: subscription?.sub_status ?? null,
           maxUsers: subscription?.max_users ?? null,
           maxJobs: subscription?.max_jobs ?? null,
           features: subscription?.features ?? [],
           trialEndsAt: subscription?.trial_ends_at ?? null,
           currentPeriodEnd: subscription?.current_period_end ?? null,
-          isReadOnly: READ_ONLY_STATUSES.includes(subscription?.status ?? ''),
-          isActive: ACTIVE_STATUSES.includes(subscription?.status ?? ''),
+          isReadOnly: READ_ONLY_STATUSES.includes(subscription?.sub_status ?? ''),
+          isActive: ACTIVE_STATUSES.includes(subscription?.sub_status ?? ''),
         },
         readOnly: {
           triggeredByStatuses: READ_ONLY_STATUSES,
@@ -139,7 +135,12 @@ export async function GET(req: NextRequest) {
     });
     return addRateLimitHeaders(response, rlResult);
   } catch (err) {
-    logger.error('api/platform/business-rules', 'Unexpected error', { companyId: ctx.companyId }, err);
+    logger.error(
+      'api/platform/business-rules',
+      'Unexpected error',
+      { companyId: ctx.companyId },
+      err
+    );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

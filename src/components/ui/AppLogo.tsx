@@ -38,9 +38,7 @@ const AppLogo = memo(function AppLogo({
   // Logo A is a full-colour image on white/transparent background.
   // On dark backgrounds use screen blend to preserve logo colours;
   // on light backgrounds render normally.
-  const blendStyle: React.CSSProperties = darkBg
-    ? { mixBlendMode: 'screen' }
-    : {};
+  const blendStyle: React.CSSProperties = darkBg ? { mixBlendMode: 'screen' } : {};
 
   const wordmarkColor = darkBg ? '#FFFFFF' : BRAND_COLORS.primary;
 
@@ -90,11 +88,7 @@ const AppLogo = memo(function AppLogo({
   const logoWidth = Math.round(size * 3.2); // Logo A is approximately 3.2:1 aspect ratio
 
   return (
-    <div
-      className={containerClassName}
-      onClick={onClick}
-      role={onClick ? 'button' : undefined}
-    >
+    <div className={containerClassName} onClick={onClick} role={onClick ? 'button' : undefined}>
       <AppImage
         src={BRAND_ASSETS.logoFull}
         alt={`${BRAND_IDENTITY.name} — ${BRAND_IDENTITY.tagline}`}

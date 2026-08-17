@@ -2,11 +2,24 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Menu, Search, Bell, ChevronDown, Settings, LogOut, User, HelpCircle, Sun, Moon, X } from 'lucide-react';
+import {
+  Menu,
+  Search,
+  Bell,
+  ChevronDown,
+  Settings,
+  LogOut,
+  User,
+  HelpCircle,
+  Sun,
+  Moon,
+  X,
+} from 'lucide-react';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import { BRAND_IDENTITY, PLATFORM_IDENTITY } from '@/lib/brand';
+import { logger } from '@/lib/logger';
 
 interface TopbarProps {
   onMobileMenuToggle: () => void;
@@ -60,14 +73,21 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
   const router = useRouter();
 
   const crumb = breadcrumbMap[currentPath] || {
-    label: currentPath.replace(/^\//, '').replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || 'Page',
+    label:
+      currentPath
+        .replace(/^\//, '')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase()) || 'Page',
   };
 
   useEffect(() => {
     if (!user) return;
     const supabase = createClient();
     const loadCount = async () => {
-      let query = supabase.from('notifications').select('id', { count: 'exact', head: true }).eq('is_read', false);
+      let query = supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .eq('is_read', false);
       if (companyId) query = query.eq('company_id', companyId);
       const { count } = await query;
       setUnreadCount(count || 0);
@@ -75,15 +95,32 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
     loadCount();
     const channel = supabase
       .channel('topbar-notifications')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications', ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}) }, () => setUnreadCount((p) => p + 1))
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'notifications' }, (payload) => {
-        if ((payload.new as any).is_read) setUnreadCount((p) => Math.max(0, p - 1));
-      })
-      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'notifications' }, () => loadCount())
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}),
+        },
+        () => setUnreadCount((p) => p + 1)
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'notifications' },
+        (payload) => {
+          if ((payload.new as any).is_read) setUnreadCount((p) => Math.max(0, p - 1));
+        }
+      )
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'notifications' }, () =>
+        loadCount()
+      )
       .subscribe();
     channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, companyId]);
 
   useEffect(() => {
@@ -107,14 +144,29 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
   }, []);
 
   const handleSignOut = async () => {
-    try { await signOut(); } catch {}
+    try {
+      await signOut();
+    } catch (err) {
+      // Sign-out is best effort: even if the token could not be revoked
+      // server-side, the user must still be navigated away from the session.
+      logger.warn('Topbar', 'Sign out failed; navigating away regardless', {}, err);
+    }
     router.push('/sign-up-login');
   };
 
   const fullName: string = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
   const email: string = user?.email || '';
-  const initials: string = fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const shortName: string = fullName.split(' ').slice(0, 2).map((n: string, i: number) => i === 1 ? n[0] + '.' : n).join(' ');
+  const initials: string = fullName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+  const shortName: string = fullName
+    .split(' ')
+    .slice(0, 2)
+    .map((n: string, i: number) => (i === 1 ? n[0] + '.' : n))
+    .join(' ');
 
   return (
     <header
@@ -139,21 +191,33 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
 
       {/* Breadcrumb */}
       <div className="hidden sm:flex items-center gap-1.5 text-[13px] min-w-0 flex-shrink-0">
-        <span className="font-600" style={{ color: 'var(--primary)', letterSpacing: '-0.01em' }}>{PLATFORM_IDENTITY.platformName}</span>
-        <span className="opacity-30" style={{ color: 'var(--foreground)' }}>/</span>
+        <span className="font-600" style={{ color: 'var(--primary)', letterSpacing: '-0.01em' }}>
+          {PLATFORM_IDENTITY.platformName}
+        </span>
+        <span className="opacity-30" style={{ color: 'var(--foreground)' }}>
+          /
+        </span>
         <span style={{ color: 'var(--muted-foreground)' }}>{BRAND_IDENTITY.name}</span>
         {crumb.parent && (
           <>
-            <span className="opacity-30" style={{ color: 'var(--foreground)' }}>/</span>
+            <span className="opacity-30" style={{ color: 'var(--foreground)' }}>
+              /
+            </span>
             <span style={{ color: 'var(--muted-foreground)' }}>{crumb.parent}</span>
           </>
         )}
-        <span className="opacity-30" style={{ color: 'var(--foreground)' }}>/</span>
-        <span className="font-600 truncate" style={{ color: 'var(--foreground)' }}>{crumb.label}</span>
+        <span className="opacity-30" style={{ color: 'var(--foreground)' }}>
+          /
+        </span>
+        <span className="font-600 truncate" style={{ color: 'var(--foreground)' }}>
+          {crumb.label}
+        </span>
       </div>
 
       {/* Search */}
-      <div className={`flex-1 max-w-xs mx-auto relative transition-all duration-300 ${searchFocused ? 'max-w-md' : ''}`}>
+      <div
+        className={`flex-1 max-w-xs mx-auto relative transition-all duration-300 ${searchFocused ? 'max-w-md' : ''}`}
+      >
         <Search
           size={13}
           className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none transition-colors duration-200 z-10"
@@ -219,16 +283,20 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
         </button>
 
         {/* Help */}
-        <button
+        <Link
+          href="/marketing/resources"
           className="p-1.5 rounded-lg transition-all duration-150 hover:scale-105 active:scale-95 hidden md:flex"
           style={{ color: 'var(--muted-foreground)' }}
-          aria-label="Help"
+          aria-label="Help and resources"
         >
           <HelpCircle size={17} />
-        </button>
+        </Link>
 
         {/* Divider */}
-        <div className="w-px h-5 mx-1 hidden sm:block" style={{ backgroundColor: 'var(--border)' }} />
+        <div
+          className="w-px h-5 mx-1 hidden sm:block"
+          style={{ backgroundColor: 'var(--border)' }}
+        />
 
         {/* User menu */}
         <div className="relative" ref={menuRef}>
@@ -240,11 +308,17 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
           >
             <div
               className="w-6 h-6 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0 ring-2 ring-offset-1"
-              style={{
-                background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
-                fontSize: '10px',
-                ringColor: 'rgba(37,99,235,0.3)',
-              }}
+              style={
+                {
+                  background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                  fontSize: '10px',
+                  // `ringColor` is a Tailwind utility name, not a CSS property.
+                  // As an inline style it was dropped by React, so the ring
+                  // rendered in the default colour. Tailwind's ring colour is set
+                  // through the --tw-ring-color custom property.
+                  ['--tw-ring-color' as string]: 'rgba(37,99,235,0.3)',
+                } as React.CSSProperties
+              }
             >
               {initials}
             </div>
@@ -270,13 +344,26 @@ export default function Topbar({ onMobileMenuToggle, currentPath }: TopbarProps)
                 <div className="flex items-center gap-2.5">
                   <div
                     className="w-8 h-8 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0"
-                    style={{ background: 'linear-gradient(135deg, #2563EB, #1D4ED8)', fontSize: '11px' }}
+                    style={{
+                      background: 'linear-gradient(135deg, #2563EB, #1D4ED8)',
+                      fontSize: '11px',
+                    }}
                   >
                     {initials}
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[13px] font-600 truncate" style={{ color: 'var(--foreground)' }}>{fullName}</p>
-                    <p className="text-[11px] truncate" style={{ color: 'var(--muted-foreground)' }}>{email}</p>
+                    <p
+                      className="text-[13px] font-600 truncate"
+                      style={{ color: 'var(--foreground)' }}
+                    >
+                      {fullName}
+                    </p>
+                    <p
+                      className="text-[11px] truncate"
+                      style={{ color: 'var(--muted-foreground)' }}
+                    >
+                      {email}
+                    </p>
                   </div>
                 </div>
               </div>

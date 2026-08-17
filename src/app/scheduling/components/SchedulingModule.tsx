@@ -63,7 +63,11 @@ export default function SchedulingModule() {
   const [viewMode, setViewMode] = useState<ViewMode>('week');
   const [showNewJobModal, setShowNewJobModal] = useState(false);
   const [filters, setFilters] = useState<ScheduleFilters>({
-    contractor: 'all', region: 'all', client: 'all', site: 'all', status: 'all',
+    contractor: 'all',
+    region: 'all',
+    client: 'all',
+    site: 'all',
+    status: 'all',
   });
   const [selectedWeekOffset, setSelectedWeekOffset] = useState(0);
   const [jobs, setJobs] = useState<ScheduledJob[]>([]);
@@ -88,7 +92,7 @@ export default function SchedulingModule() {
 
   useEffect(() => {
     loadData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedWeekOffset, companyId]);
 
   const filteredJobs = jobs.filter((job) => {
@@ -97,8 +101,10 @@ export default function SchedulingModule() {
       if (contractorSlug !== filters.contractor) return false;
     }
     if (filters.status !== 'all' && job.status !== filters.status) return false;
-    if (filters.region !== 'all' && job.region.toLowerCase().replace(/\s/g, '') !== filters.region) return false;
-    if (filters.client !== 'all' && job.client.toLowerCase().replace(/\s+/g, '') !== filters.client) return false;
+    if (filters.region !== 'all' && job.region.toLowerCase().replace(/\s/g, '') !== filters.region)
+      return false;
+    if (filters.client !== 'all' && job.client.toLowerCase().replace(/\s+/g, '') !== filters.client)
+      return false;
     return true;
   });
 
@@ -120,7 +126,9 @@ export default function SchedulingModule() {
     const conflicting = jobs.filter((j) => jobsOverlap(j, job));
     if (conflicting.length > 0) {
       const names = conflicting.map((j) => j.site).join(', ');
-      setConflictWarning(`⚠️ Conflict detected: ${job.contractorName} is already scheduled for ${names} at this time.`);
+      setConflictWarning(
+        `⚠️ Conflict detected: ${job.contractorName} is already scheduled for ${names} at this time.`
+      );
       setTimeout(() => setConflictWarning(null), 6000);
     }
     setJobs((prev) => [...prev, { ...job, hasConflict: conflicting.length > 0 }]);
@@ -128,8 +136,11 @@ export default function SchedulingModule() {
 
     if (user) {
       await logActivity({
-        userId: user.id, companyId, action: 'job_created',
-        entityType: 'scheduled_job', entityId: job.id,
+        userId: user.id,
+        companyId,
+        action: 'job_created',
+        entityType: 'scheduled_job',
+        entityId: job.id,
         description: `Scheduled job created: ${job.site} on ${job.scheduledDate}`,
         metadata: { contractor: job.contractorName, hasConflict: conflicting.length > 0 },
       });
@@ -144,12 +155,25 @@ export default function SchedulingModule() {
         weekOffset={selectedWeekOffset}
         onWeekChange={setSelectedWeekOffset}
         onNewJob={() => setShowNewJobModal(true)}
+        onRefresh={loadData}
       />
-      <ScheduleFilterBar filters={filters} onFilterChange={setFilters} jobs={jobs} contractors={contractors} />
+      <ScheduleFilterBar
+        filters={filters}
+        onFilterChange={setFilters}
+        jobs={jobs}
+        contractors={contractors}
+      />
 
       {/* Conflict warning banner */}
       {conflictWarning && (
-        <div className="mx-4 mt-2 px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-500 animate-slide-up" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', border: '1px solid var(--warning)' }}>
+        <div
+          className="mx-4 mt-2 px-4 py-2.5 rounded-lg flex items-center gap-2 text-sm font-500 animate-slide-up"
+          style={{
+            backgroundColor: 'var(--warning-bg)',
+            color: 'var(--warning)',
+            border: '1px solid var(--warning)',
+          }}
+        >
           <AlertTriangle size={14} />
           {conflictWarning}
         </div>
@@ -157,7 +181,10 @@ export default function SchedulingModule() {
 
       {/* Conflict summary badge */}
       {conflictCount > 0 && !conflictWarning && (
-        <div className="mx-4 mt-2 px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-500" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}>
+        <div
+          className="mx-4 mt-2 px-4 py-2 rounded-lg flex items-center gap-2 text-xs font-500"
+          style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
+        >
           <AlertTriangle size={12} />
           {conflictCount} job{conflictCount > 1 ? 's have' : ' has'} scheduling conflicts this week
         </div>
@@ -175,15 +202,23 @@ export default function SchedulingModule() {
           ) : (
             <div className="flex flex-col h-full overflow-hidden bg-background">
               {/* Day headers */}
-              <div className="flex-shrink-0 flex border-b border-border bg-card" style={{ paddingLeft: '56px' }}>
+              <div
+                className="flex-shrink-0 flex border-b border-border bg-card"
+                style={{ paddingLeft: '56px' }}
+              >
                 {days.map((day, i) => {
                   const dateStr = weekDates[i];
                   const dateNum = dateStr ? parseInt(dateStr.split('-')[2]) : i + 1;
                   const isToday = dateStr === todayDateStr;
                   return (
-                    <div key={day} className="flex-1 px-2 py-2.5 text-center border-r border-border last:border-r-0">
+                    <div
+                      key={day}
+                      className="flex-1 px-2 py-2.5 text-center border-r border-border last:border-r-0"
+                    >
                       <p className="text-xs font-500 text-muted-foreground">{day}</p>
-                      <p className={`text-sm font-700 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center mx-auto ${isToday ? 'bg-accent text-white' : 'text-foreground'}`}>
+                      <p
+                        className={`text-sm font-700 mt-0.5 w-7 h-7 rounded-full flex items-center justify-center mx-auto ${isToday ? 'bg-accent text-white' : 'text-foreground'}`}
+                      >
                         {dateNum}
                       </p>
                     </div>
@@ -193,11 +228,18 @@ export default function SchedulingModule() {
 
               {/* Time grid */}
               <div className="flex-1 overflow-y-auto scrollbar-thin">
-                <div className="relative flex" style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}>
+                <div
+                  className="relative flex"
+                  style={{ height: `${(END_HOUR - START_HOUR) * HOUR_HEIGHT}px` }}
+                >
                   {/* Hour labels */}
                   <div className="flex-shrink-0 w-14 relative">
                     {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-                      <div key={i} className="absolute right-2 text-xs text-muted-foreground" style={{ top: `${i * HOUR_HEIGHT - 8}px`, fontSize: '10px' }}>
+                      <div
+                        key={i}
+                        className="absolute right-2 text-xs text-muted-foreground"
+                        style={{ top: `${i * HOUR_HEIGHT - 8}px`, fontSize: '10px' }}
+                      >
                         {formatHour(START_HOUR + i)}
                       </div>
                     ))}
@@ -208,20 +250,30 @@ export default function SchedulingModule() {
                     const dateStr = weekDates[dayIdx];
                     const dayJobs = filteredJobs.filter((j) => j.scheduledDate === dateStr);
                     return (
-                      <div key={day} className="flex-1 relative border-r border-border last:border-r-0">
+                      <div
+                        key={day}
+                        className="flex-1 relative border-r border-border last:border-r-0"
+                      >
                         {Array.from({ length: END_HOUR - START_HOUR }, (_, i) => (
-                          <div key={i} className="absolute w-full border-t border-border/40" style={{ top: `${i * HOUR_HEIGHT}px` }} />
+                          <div
+                            key={i}
+                            className="absolute w-full border-t border-border/40"
+                            style={{ top: `${i * HOUR_HEIGHT}px` }}
+                          />
                         ))}
                         {dayJobs.map((job) => {
                           const [startH, startM] = job.startTime.split(':').map(Number);
-                          const top = (startH - START_HOUR) * HOUR_HEIGHT + (startM / 60) * HOUR_HEIGHT;
+                          const top =
+                            (startH - START_HOUR) * HOUR_HEIGHT + (startM / 60) * HOUR_HEIGHT;
                           const height = Math.max((job.durationMinutes / 60) * HOUR_HEIGHT, 28);
                           const colors = statusColors[job.status] || statusColors['scheduled'];
                           const hasConflict = conflictJobIds.has(job.id);
                           return (
                             <button
                               key={job.id}
-                              onClick={() => setSelectedJob(selectedJob?.id === job.id ? null : job)}
+                              onClick={() =>
+                                setSelectedJob(selectedJob?.id === job.id ? null : job)
+                              }
                               className="absolute left-1 right-1 rounded-lg px-2 py-1 text-left overflow-hidden transition-all hover:brightness-110 active:scale-95"
                               style={{
                                 top: `${top}px`,
@@ -230,10 +282,33 @@ export default function SchedulingModule() {
                                 borderLeft: `3px solid ${hasConflict ? '#F97316' : colors.border}`,
                               }}
                             >
-                              <p className="text-xs font-700 truncate leading-tight" style={{ color: hasConflict ? '#F97316' : colors.text }}>{job.site}</p>
-                              {height > 40 && <p className="text-xs truncate opacity-80" style={{ color: hasConflict ? '#F97316' : colors.text, fontSize: '10px' }}>{job.contractorName}</p>}
+                              <p
+                                className="text-xs font-700 truncate leading-tight"
+                                style={{ color: hasConflict ? '#F97316' : colors.text }}
+                              >
+                                {job.site}
+                              </p>
+                              {height > 40 && (
+                                <p
+                                  className="text-xs truncate opacity-80"
+                                  style={{
+                                    color: hasConflict ? '#F97316' : colors.text,
+                                    fontSize: '10px',
+                                  }}
+                                >
+                                  {job.contractorName}
+                                </p>
+                              )}
                               {hasConflict && height > 28 && (
-                                <AlertTriangle size={8} style={{ color: '#F97316', position: 'absolute', top: 3, right: 3 }} />
+                                <AlertTriangle
+                                  size={8}
+                                  style={{
+                                    color: '#F97316',
+                                    position: 'absolute',
+                                    top: 3,
+                                    right: 3,
+                                  }}
+                                />
                               )}
                             </button>
                           );
@@ -258,21 +333,42 @@ export default function SchedulingModule() {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-700 text-foreground">{selectedJob.jobNum} · {selectedJob.site}</p>
+                    <p className="text-sm font-700 text-foreground">
+                      {selectedJob.jobNum} · {selectedJob.site}
+                    </p>
                     {conflictJobIds.has(selectedJob.id) && (
-                      <span className="flex items-center gap-1 text-xs font-600 px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}>
+                      <span
+                        className="flex items-center gap-1 text-xs font-600 px-2 py-0.5 rounded-full"
+                        style={{ backgroundColor: 'var(--warning-bg)', color: 'var(--warning)' }}
+                      >
                         <AlertTriangle size={10} /> Conflict
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-muted-foreground mt-0.5">{selectedJob.client} · {selectedJob.contractorName}</p>
-                  <p className="text-xs text-muted-foreground">{selectedJob.scheduledDate} at {selectedJob.startTime} · {selectedJob.durationMinutes} min</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {selectedJob.client} · {selectedJob.contractorName}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedJob.scheduledDate} at {selectedJob.startTime} ·{' '}
+                    {selectedJob.durationMinutes} min
+                  </p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs px-2 py-1 rounded-full font-600" style={{ backgroundColor: statusColors[selectedJob.status]?.bg, color: statusColors[selectedJob.status]?.text }}>
+                  <span
+                    className="text-xs px-2 py-1 rounded-full font-600"
+                    style={{
+                      backgroundColor: statusColors[selectedJob.status]?.bg,
+                      color: statusColors[selectedJob.status]?.text,
+                    }}
+                  >
                     {selectedJob.status}
                   </span>
-                  <button onClick={() => setSelectedJob(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+                  <button
+                    onClick={() => setSelectedJob(null)}
+                    className="text-xs text-muted-foreground hover:text-foreground"
+                  >
+                    ✕
+                  </button>
                 </div>
               </div>
             </div>

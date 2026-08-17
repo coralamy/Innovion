@@ -1,8 +1,29 @@
 'use client';
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { ClipboardList, Plus, Search, CheckCircle2, Circle, Camera, PenLine, ChevronDown, ChevronRight, AlertTriangle, Clock, MapPin, X, Check, Loader2 } from 'lucide-react';
-import { checklistService, Checklist, ChecklistSection, ChecklistTask } from '@/lib/services/checklistService';
+import {
+  ClipboardList,
+  Plus,
+  Search,
+  CheckCircle2,
+  Circle,
+  Camera,
+  PenLine,
+  ChevronDown,
+  ChevronRight,
+  AlertTriangle,
+  Clock,
+  MapPin,
+  X,
+  Check,
+  Loader2,
+} from 'lucide-react';
+import {
+  checklistService,
+  Checklist,
+  ChecklistSection,
+  ChecklistTask,
+} from '@/lib/services/checklistService';
 import { createClient } from '@/lib/supabase/client';
 import { useRBAC } from '@/contexts/RBACContext';
 import { useAuth } from '@/contexts/AuthContext';
@@ -23,7 +44,11 @@ const statusConfig: Record<string, { label: string; color: string; bg: string }>
   pending: { label: 'Pending', color: 'var(--muted-foreground)', bg: 'var(--secondary)' },
   'in-progress': { label: 'In Progress', color: '#F59E0B', bg: 'rgba(245,158,11,0.1)' },
   completed: { label: 'Completed', color: 'var(--success)', bg: 'var(--success-bg)' },
-  flagged: { label: 'Flagged', color: 'var(--danger)', bg: 'var(--danger-bg, rgba(239,68,68,0.1))' },
+  flagged: {
+    label: 'Flagged',
+    color: 'var(--danger)',
+    bg: 'var(--danger-bg, rgba(239,68,68,0.1))',
+  },
 };
 
 function getProgress(checklist: Checklist): { done: number; total: number; pct: number } {
@@ -40,54 +65,144 @@ function getProgress(checklist: Checklist): { done: number; total: number; pct: 
 
 // ─── Sign-Off Modal ───────────────────────────────────────────────────────────
 
-function SignOffModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: (name: string) => void }) {
+/**
+ * Checklist sign-off with a captured signature.
+ *
+ * ---------------------------------------------------------------------------
+ * DEFECTS REMEDIATED
+ *
+ * 1. TOUCH DID NOT WORK AT ALL. The canvas bound only `onMouseDown`,
+ *    `onMouseMove`, `onMouseUp` and `onMouseLeave`. On a phone or tablet — the
+ *    device a supervisor actually signs off a site checklist on — no mouse
+ *    events fire, so the pad could not be drawn on. `touchAction: 'none'` was
+ *    already set, so touching the pad also suppressed page scrolling: the
+ *    control was simultaneously inoperable and obstructive. Replaced with
+ *    Pointer Events, which cover mouse, touch and stylus in one API, with
+ *    pointer capture so a stroke that leaves the pad still terminates cleanly.
+ *
+ * 2. THE SIGNATURE WAS THROWN AWAY. `onConfirm(name)` passed only the typed
+ *    name, and the caller then stored the literal string `'signed'` in
+ *    `checklists.signature_data`. The column, the service mapping and the
+ *    persistence were all already in place — the drawn image was simply
+ *    discarded. A signed-off safety checklist therefore carried no signature
+ *    evidence whatsoever, which is the entire purpose of the control. The
+ *    canvas is now exported as a PNG data URL and stored.
+ *
+ * 3. INVISIBLE INK ON DARK THEME. The stroke colour was set to the string
+ *    `'var(--foreground)'`. Canvas 2D does not resolve CSS custom properties;
+ *    an unparseable value is ignored, leaving the default black. On the dark
+ *    theme, black on a dark pad is invisible. The colour is now resolved from
+ *    the computed style before drawing.
+ *
+ * 4. NO DEVICE-PIXEL SCALING. The backing store was a fixed 400×120 while the
+ *    element is `w-full`, so strokes were stretched and blurred, and the stored
+ *    signature inherited that. The backing store is now sized to the element
+ *    times the device pixel ratio.
+ * ---------------------------------------------------------------------------
+ */
+function SignOffModal({
+  onClose,
+  onConfirm,
+}: {
+  onClose: () => void;
+  onConfirm: (name: string, signatureDataUrl: string) => void;
+}) {
   const [name, setName] = useState('');
   const [signed, setSigned] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  const strokeColour = useRef('#0f172a');
 
-  const startDraw = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    drawing.current = true;
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx) return;
-    ctx.beginPath();
+  // Size the backing store to the rendered element, and resolve the theme's
+  // foreground colour to a real colour value the canvas can use.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ratio = window.devicePixelRatio || 1;
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = Math.max(1, Math.round(rect.width * ratio));
+    canvas.height = Math.max(1, Math.round(rect.height * ratio));
+
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.scale(ratio, ratio);
+
+    const resolved = getComputedStyle(canvas).getPropertyValue('--foreground').trim();
+    if (resolved) strokeColour.current = resolved;
+  }, []);
+
+  const pointAt = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
-    ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const draw = (e: React.MouseEvent<HTMLCanvasElement>) => {
+  const startDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    // Keep receiving events even if the finger slides off the pad.
+    canvas.setPointerCapture(e.pointerId);
+    drawing.current = true;
+    const { x, y } = pointAt(e);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+  };
+
+  const draw = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (!drawing.current) return;
     const ctx = canvasRef.current?.getContext('2d');
     if (!ctx) return;
-    const rect = canvasRef.current!.getBoundingClientRect();
-    ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-    ctx.strokeStyle = 'var(--foreground)';
+    const { x, y } = pointAt(e);
+    ctx.lineTo(x, y);
+    ctx.strokeStyle = strokeColour.current;
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.stroke();
     setSigned(true);
   };
 
-  const stopDraw = () => { drawing.current = false; };
+  const stopDraw = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (canvasRef.current?.hasPointerCapture(e.pointerId)) {
+      canvasRef.current.releasePointerCapture(e.pointerId);
+    }
+    drawing.current = false;
+  };
 
   const clearCanvas = () => {
-    const ctx = canvasRef.current?.getContext('2d');
-    if (!ctx || !canvasRef.current) return;
-    ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!ctx || !canvas) return;
+    // The context is scaled by the device pixel ratio, so clear in CSS pixels.
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
     setSigned(false);
   };
 
+  const handleConfirm = () => {
+    const canvas = canvasRef.current;
+    if (!name.trim() || !signed || !canvas) return;
+    onConfirm(name.trim(), canvas.toDataURL('image/png'));
+  };
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+    >
       <div className="card-elevated w-full max-w-md p-6 space-y-5 animate-slide-up">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-700 text-foreground">Sign Off Checklist</h3>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+          >
             <X size={16} className="text-muted-foreground" />
           </button>
         </div>
         <div>
-          <label className="block text-xs font-600 text-muted-foreground mb-1.5">Authorised by</label>
+          <label className="block text-xs font-600 text-muted-foreground mb-1.5">
+            Authorised by
+          </label>
           <input
             type="text"
             placeholder="Full name"
@@ -100,32 +215,48 @@ function SignOffModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: 
         <div>
           <div className="flex items-center justify-between mb-1.5">
             <label className="text-xs font-600 text-muted-foreground">Signature</label>
-            <button onClick={clearCanvas} className="text-xs text-muted-foreground hover:text-foreground transition-colors">Clear</button>
+            <button
+              onClick={clearCanvas}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Clear
+            </button>
           </div>
           <canvas
             ref={canvasRef}
-            width={400}
-            height={120}
-            onMouseDown={startDraw}
-            onMouseMove={draw}
-            onMouseUp={stopDraw}
-            onMouseLeave={stopDraw}
-            className="w-full rounded-lg border cursor-crosshair"
-            style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)', touchAction: 'none' }}
+            onPointerDown={startDraw}
+            onPointerMove={draw}
+            onPointerUp={stopDraw}
+            onPointerCancel={stopDraw}
+            aria-label="Signature pad"
+            className="w-full h-[120px] rounded-lg border cursor-crosshair"
+            style={{
+              borderColor: 'var(--border)',
+              backgroundColor: 'var(--secondary)',
+              touchAction: 'none',
+            }}
           />
-          <p className="text-xs text-muted-foreground mt-1">Draw your signature above</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Draw your signature above using a finger, stylus or mouse
+          </p>
         </div>
         <div className="flex gap-3">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-600 border transition-colors hover:bg-secondary" style={{ borderColor: 'var(--border)' }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg text-sm font-600 border transition-colors hover:bg-secondary"
+            style={{ borderColor: 'var(--border)' }}
+          >
             Cancel
           </button>
           <button
-            onClick={() => name.trim() && signed && onConfirm(name.trim())}
+            onClick={handleConfirm}
             disabled={!name.trim() || !signed}
             className="flex-1 py-2 rounded-lg text-sm font-600 text-white transition-all hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ backgroundColor: 'var(--success)' }}
           >
-            <span className="flex items-center justify-center gap-1.5"><Check size={14} /> Confirm Sign-Off</span>
+            <span className="flex items-center justify-center gap-1.5">
+              <Check size={14} /> Confirm Sign-Off
+            </span>
           </button>
         </div>
       </div>
@@ -135,13 +266,27 @@ function SignOffModal({ onClose, onConfirm }: { onClose: () => void; onConfirm: 
 
 // ─── Photo Attachment (real upload) ──────────────────────────────────────────
 
-function PhotoAttachment({ photos, onAdd, onRemove, uploading }: { photos: string[]; onAdd: (file: File) => void; onRemove: (url: string) => void; uploading: boolean }) {
+function PhotoAttachment({
+  photos,
+  onAdd,
+  onRemove,
+  uploading,
+}: {
+  photos: string[];
+  onAdd: (file: File) => void;
+  onRemove: (url: string) => void;
+  uploading: boolean;
+}) {
   const fileRef = useRef<HTMLInputElement>(null);
 
   return (
     <div className="flex items-center gap-2 flex-wrap mt-1.5">
       {photos?.map((p, i) => (
-        <div key={i} className="relative w-10 h-10 rounded-lg overflow-hidden border group" style={{ borderColor: 'var(--border)' }}>
+        <div
+          key={i}
+          className="relative w-10 h-10 rounded-lg overflow-hidden border group"
+          style={{ borderColor: 'var(--border)' }}
+        >
           <img src={p} alt={`Task photo ${i + 1}`} className="w-full h-full object-cover" />
           <button
             onClick={() => onRemove(p)}
@@ -158,7 +303,11 @@ function PhotoAttachment({ photos, onAdd, onRemove, uploading }: { photos: strin
         style={{ borderColor: 'var(--border)' }}
         title="Add photo"
       >
-        {uploading ? <Loader2 size={12} className="animate-spin text-muted-foreground" /> : <Camera size={14} className="text-muted-foreground" />}
+        {uploading ? (
+          <Loader2 size={12} className="animate-spin text-muted-foreground" />
+        ) : (
+          <Camera size={14} className="text-muted-foreground" />
+        )}
       </button>
       <input
         ref={fileRef}
@@ -228,12 +377,7 @@ function ChecklistDetail({
       ),
     };
     const p = getProgress(updated);
-    updated.status =
-      p.done === 0
-        ? 'pending'
-        : p.done === p.total
-        ? 'completed'
-        : 'in-progress';
+    updated.status = p.done === 0 ? 'pending' : p.done === p.total ? 'completed' : 'in-progress';
     persistUpdate(updated);
   };
 
@@ -249,12 +393,18 @@ function ChecklistDetail({
     persistUpdate(updated);
   };
 
-  const handleSignOff = (name: string) => {
+  const handleSignOff = (name: string, signatureDataUrl: string) => {
     const updated: Checklist = {
       ...checklist,
       signedOffBy: name,
-      signedOffAt: new Date().toLocaleString('en-AU', { dateStyle: 'medium', timeStyle: 'short' }),
-      signatureData: 'signed',
+      // ISO-8601, not a locale string: `signed_off_at` is a record of when the
+      // sign-off occurred and must be comparable and timezone-unambiguous. The
+      // previous value was `toLocaleString('en-AU', ...)`, which produced e.g.
+      // "17 Aug 2026, 8:14 pm" — unsortable, unparseable, and silently wrong
+      // for any tenant outside Australia.
+      signedOffAt: new Date().toISOString(),
+      // The captured signature, not the literal string 'signed'.
+      signatureData: signatureDataUrl,
       status: 'completed',
     };
     persistUpdate(updated);
@@ -277,12 +427,14 @@ function ChecklistDetail({
       const updated = {
         ...checklist,
         sections: checklist.sections.map((sec) =>
-          sec.id !== sectionId ? sec : {
-            ...sec,
-            tasks: sec.tasks.map((t) =>
-              t.id !== taskId ? t : { ...t, photos: [...(t.photos || []), photoUrl] }
-            ),
-          }
+          sec.id !== sectionId
+            ? sec
+            : {
+                ...sec,
+                tasks: sec.tasks.map((t) =>
+                  t.id !== taskId ? t : { ...t, photos: [...(t.photos || []), photoUrl] }
+                ),
+              }
         ),
       };
       persistUpdate(updated);
@@ -297,12 +449,14 @@ function ChecklistDetail({
     const updated = {
       ...checklist,
       sections: checklist.sections.map((sec) =>
-        sec.id !== sectionId ? sec : {
-          ...sec,
-          tasks: sec.tasks.map((t) =>
-            t.id !== taskId ? t : { ...t, photos: (t.photos || []).filter((p) => p !== url) }
-          ),
-        }
+        sec.id !== sectionId
+          ? sec
+          : {
+              ...sec,
+              tasks: sec.tasks.map((t) =>
+                t.id !== taskId ? t : { ...t, photos: (t.photos || []).filter((p) => p !== url) }
+              ),
+            }
       ),
     };
     persistUpdate(updated);
@@ -319,16 +473,32 @@ function ChecklistDetail({
           <div className="flex items-start justify-between gap-3">
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap mb-1">
-                <span className="text-xs px-2 py-0.5 rounded-full font-600" style={{ backgroundColor: tc.bg, color: tc.color }}>{tc.label}</span>
-                <span className="text-xs px-2 py-0.5 rounded-full font-600" style={{ backgroundColor: sc.bg, color: sc.color }}>{sc.label}</span>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-600"
+                  style={{ backgroundColor: tc.bg, color: tc.color }}
+                >
+                  {tc.label}
+                </span>
+                <span
+                  className="text-xs px-2 py-0.5 rounded-full font-600"
+                  style={{ backgroundColor: sc.bg, color: sc.color }}
+                >
+                  {sc.label}
+                </span>
                 {saving && <span className="text-xs text-muted-foreground">Saving...</span>}
               </div>
-              <h3 className="font-700 text-foreground text-base leading-tight">{checklist.title}</h3>
+              <h3 className="font-700 text-foreground text-base leading-tight">
+                {checklist.title}
+              </h3>
               <div className="flex items-center gap-1 mt-1 text-xs text-muted-foreground">
-                <MapPin size={11} />{checklist.site}
+                <MapPin size={11} />
+                {checklist.site}
               </div>
             </div>
-            <button onClick={onClose} className="p-1.5 rounded-md hover:bg-secondary transition-colors flex-shrink-0">
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-md hover:bg-secondary transition-colors flex-shrink-0"
+            >
               <X size={16} className="text-muted-foreground" />
             </button>
           </div>
@@ -336,10 +506,15 @@ function ChecklistDetail({
           {/* Progress bar */}
           <div className="mt-4">
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className="text-muted-foreground">{progress.done} of {progress.total} tasks complete</span>
+              <span className="text-muted-foreground">
+                {progress.done} of {progress.total} tasks complete
+              </span>
               <span className="font-700 text-foreground">{progress.pct}%</span>
             </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--secondary)' }}>
+            <div
+              className="h-2 rounded-full overflow-hidden"
+              style={{ backgroundColor: 'var(--secondary)' }}
+            >
               <div
                 className="h-full rounded-full transition-all duration-500"
                 style={{
@@ -353,21 +528,33 @@ function ChecklistDetail({
           {/* Meta */}
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
-              <div className="w-4 h-4 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0" style={{ backgroundColor: checklist.avatarColor, fontSize: '8px' }}>
+              <div
+                className="w-4 h-4 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0"
+                style={{ backgroundColor: checklist.avatarColor, fontSize: '8px' }}
+              >
                 {checklist.initials}
               </div>
               {checklist.assignedTo}
             </span>
-            <span className="flex items-center gap-1"><Clock size={11} />{checklist.date}</span>
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              {checklist.date}
+            </span>
           </div>
         </div>
 
         {/* Sections */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
           {checklist.sections?.map((section) => (
-            <div key={section.id} className="rounded-xl border overflow-hidden" style={{ borderColor: 'var(--border)' }}>
+            <div
+              key={section.id}
+              className="rounded-xl border overflow-hidden"
+              style={{ borderColor: 'var(--border)' }}
+            >
               <button
-                onClick={() => setExpanded((prev) => ({ ...prev, [section.id]: !prev[section.id] }))}
+                onClick={() =>
+                  setExpanded((prev) => ({ ...prev, [section.id]: !prev[section.id] }))
+                }
                 className="w-full flex items-center justify-between px-4 py-3 text-left transition-colors hover:bg-secondary"
                 style={{ backgroundColor: 'var(--secondary)' }}
               >
@@ -376,7 +563,11 @@ function ChecklistDetail({
                   <span className="text-xs text-muted-foreground">
                     {section.tasks?.filter((t) => t.completed).length}/{section.tasks?.length}
                   </span>
-                  {expanded[section.id] ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
+                  {expanded[section.id] ? (
+                    <ChevronDown size={14} className="text-muted-foreground" />
+                  ) : (
+                    <ChevronRight size={14} className="text-muted-foreground" />
+                  )}
                 </div>
               </button>
 
@@ -396,10 +587,17 @@ function ChecklistDetail({
                           )}
                         </button>
                         <div className="flex-1 min-w-0">
-                          <p className={`text-sm font-500 leading-snug ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                          <p
+                            className={`text-sm font-500 leading-snug ${task.completed ? 'line-through text-muted-foreground' : 'text-foreground'}`}
+                          >
                             {task.label}
                             {task.required && !task.completed && (
-                              <span className="ml-1.5 text-xs font-600" style={{ color: 'var(--danger)' }}>*</span>
+                              <span
+                                className="ml-1.5 text-xs font-600"
+                                style={{ color: 'var(--danger)' }}
+                              >
+                                *
+                              </span>
                             )}
                           </p>
                           <input
@@ -411,7 +609,9 @@ function ChecklistDetail({
                             style={{ borderColor: 'var(--border)' }}
                           />
                           {task.notes && (
-                            <p className="mt-1 text-xs text-muted-foreground italic">{task.notes}</p>
+                            <p className="mt-1 text-xs text-muted-foreground italic">
+                              {task.notes}
+                            </p>
                           )}
                           <PhotoAttachment
                             photos={task.photos}
@@ -432,10 +632,15 @@ function ChecklistDetail({
         {/* Footer – Sign-off */}
         <div className="p-4 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           {checklist.signedOffBy ? (
-            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: 'var(--success-bg)' }}>
+            <div
+              className="flex items-center gap-3 p-3 rounded-xl"
+              style={{ backgroundColor: 'var(--success-bg)' }}
+            >
               <CheckCircle2 size={18} style={{ color: 'var(--success)' }} />
               <div>
-                <p className="text-sm font-700" style={{ color: 'var(--success)' }}>Signed off by {checklist.signedOffBy}</p>
+                <p className="text-sm font-700" style={{ color: 'var(--success)' }}>
+                  Signed off by {checklist.signedOffBy}
+                </p>
                 <p className="text-xs text-muted-foreground">{checklist.signedOffAt}</p>
               </div>
             </div>
@@ -461,12 +666,20 @@ function ChecklistDetail({
 
 // ─── New Checklist Modal ──────────────────────────────────────────────────────
 
-function NewChecklistModal({ onClose, onCreate }: { onClose: () => void; onCreate: (c: Checklist) => void }) {
+function NewChecklistModal({
+  onClose,
+  onCreate,
+}: {
+  onClose: () => void;
+  onCreate: (c: Checklist) => void;
+}) {
+  const { companyId } = useAuth();
   const [title, setTitle] = useState('');
   const [type, setType] = useState<Checklist['type']>('daily-job');
   const [site, setSite] = useState('');
   const [assignedTo, setAssignedTo] = useState('');
   const [saving, setSaving] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!title.trim() || !site.trim() || !assignedTo.trim()) return;
@@ -476,9 +689,17 @@ function NewChecklistModal({ onClose, onCreate }: { onClose: () => void; onCreat
       site: site.trim(),
       job: '',
       assignedTo: assignedTo.trim(),
-      initials: assignedTo.trim().split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase(),
+      initials: assignedTo
+        .trim()
+        .split(' ')
+        .map((n: string) => n[0])
+        .join('')
+        .slice(0, 2)
+        .toUpperCase(),
       avatarColor: '#2563EB',
-      date: 'Today',
+      // An ISO date, not the literal string "Today", which every checklist ever
+      // created carried as its date.
+      date: new Date().toISOString().split('T')[0],
       status: 'pending',
       signedOffBy: null,
       signedOffAt: null,
@@ -488,40 +709,72 @@ function NewChecklistModal({ onClose, onCreate }: { onClose: () => void; onCreat
           id: `sec${Date.now()}`,
           title: 'General Tasks',
           tasks: [
-            { id: `t${Date.now()}`, label: 'Task 1', completed: false, required: true, notes: '', photos: [] },
+            {
+              id: `t${Date.now()}`,
+              label: 'Task 1',
+              completed: false,
+              required: true,
+              notes: '',
+              photos: [],
+            },
           ],
         },
       ],
     };
     setSaving(true);
     try {
-      const saved = await checklistService.create(newChecklist);
-      if (saved) {
-        onCreate(saved);
-      } else {
-        onCreate({ ...newChecklist, id: `cl${Date.now()}` });
+      // The tenant MUST be supplied — without it the insert is refused.
+      const saved = await checklistService.create(newChecklist, companyId);
+      if (!saved) {
+        // Previously this fabricated `{ ...newChecklist, id: `cl${Date.now()}` }`
+        // and handed it to the caller, so a checklist that had NOT been saved
+        // appeared in the list with an id, indistinguishable from a real one.
+        setCreateError('This checklist could not be saved. Please try again.');
+        return;
       }
+      onCreate(saved);
+      onClose();
     } catch {
-      onCreate({ ...newChecklist, id: `cl${Date.now()}` });
+      setCreateError('This checklist could not be saved. Please try again.');
     } finally {
       setSaving(false);
-      onClose();
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}
+    >
       <div className="card-elevated w-full max-w-md p-6 space-y-4 animate-slide-up">
         <div className="flex items-center justify-between">
           <h3 className="text-base font-700 text-foreground">New Checklist</h3>
-          <button onClick={onClose} className="p-1.5 rounded-md hover:bg-secondary transition-colors">
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-md hover:bg-secondary transition-colors"
+          >
             <X size={16} className="text-muted-foreground" />
           </button>
         </div>
         {[
-          { label: 'Checklist Title', value: title, setter: setTitle, placeholder: 'e.g. Daily Cleaning Checklist' },
-          { label: 'Site', value: site, setter: setSite, placeholder: 'e.g. Crown Casino – Main Floor' },
-          { label: 'Assigned To', value: assignedTo, setter: setAssignedTo, placeholder: 'e.g. Marcus Johnson' },
+          {
+            label: 'Checklist Title',
+            value: title,
+            setter: setTitle,
+            placeholder: 'e.g. Daily Cleaning Checklist',
+          },
+          {
+            label: 'Site',
+            value: site,
+            setter: setSite,
+            placeholder: 'e.g. Crown Casino – Main Floor',
+          },
+          {
+            label: 'Assigned To',
+            value: assignedTo,
+            setter: setAssignedTo,
+            placeholder: 'e.g. Marcus Johnson',
+          },
         ].map(({ label, value, setter, placeholder }) => (
           <div key={label}>
             <label className="block text-xs font-600 text-muted-foreground mb-1.5">{label}</label>
@@ -548,8 +801,17 @@ function NewChecklistModal({ onClose, onCreate }: { onClose: () => void; onCreat
             <option value="safety">Safety</option>
           </select>
         </div>
+        {createError && (
+          <p className="text-xs font-600" style={{ color: 'var(--danger)' }} role="alert">
+            {createError}
+          </p>
+        )}
         <div className="flex gap-3 pt-1">
-          <button onClick={onClose} className="flex-1 py-2 rounded-lg text-sm font-600 border hover:bg-secondary transition-colors" style={{ borderColor: 'var(--border)' }}>
+          <button
+            onClick={onClose}
+            className="flex-1 py-2 rounded-lg text-sm font-600 border hover:bg-secondary transition-colors"
+            style={{ borderColor: 'var(--border)' }}
+          >
             Cancel
           </button>
           <button
@@ -625,9 +887,21 @@ export default function ChecklistsPage() {
 
   const stats = [
     { label: 'Total', value: checklists.length, color: 'var(--accent)' },
-    { label: 'In Progress', value: checklists.filter((c) => c.status === 'in-progress').length, color: '#F59E0B' },
-    { label: 'Completed', value: checklists.filter((c) => c.status === 'completed').length, color: 'var(--success)' },
-    { label: 'Flagged', value: checklists.filter((c) => c.status === 'flagged').length, color: 'var(--danger)' },
+    {
+      label: 'In Progress',
+      value: checklists.filter((c) => c.status === 'in-progress').length,
+      color: '#F59E0B',
+    },
+    {
+      label: 'Completed',
+      value: checklists.filter((c) => c.status === 'completed').length,
+      color: 'var(--success)',
+    },
+    {
+      label: 'Flagged',
+      value: checklists.filter((c) => c.status === 'flagged').length,
+      color: 'var(--danger)',
+    },
   ];
 
   return (
@@ -637,7 +911,9 @@ export default function ChecklistsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="page-header-title">Checklists & Inspections</h1>
-            <p className="page-header-subtitle">Daily job checklists, site inspections, and field compliance forms</p>
+            <p className="page-header-subtitle">
+              Daily job checklists, site inspections, and field compliance forms
+            </p>
           </div>
           {canManage && (
             <button
@@ -679,7 +955,10 @@ export default function ChecklistsPage() {
         {/* Filters */}
         <div className="card-elevated p-3 flex flex-wrap items-center gap-3">
           <div className="flex-1 min-w-[200px] relative">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Search
+              size={14}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground"
+            />
             <input
               type="text"
               placeholder="Search checklists, sites, assignees..."
@@ -754,50 +1033,91 @@ export default function ChecklistsPage() {
                     key={cl.id}
                     onClick={() => setSelected(isSelected ? null : cl)}
                     className="card-elevated p-4 cursor-pointer transition-all hover:shadow-md"
-                    style={{ borderLeft: isSelected ? '3px solid var(--accent)' : hasFlagged ? '3px solid var(--danger)' : '3px solid transparent' }}
+                    style={{
+                      borderLeft: isSelected
+                        ? '3px solid var(--accent)'
+                        : hasFlagged
+                          ? '3px solid var(--danger)'
+                          : '3px solid transparent',
+                    }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1">
-                          <span className="text-xs px-2 py-0.5 rounded-full font-600" style={{ backgroundColor: tc.bg, color: tc.color }}>{tc.label}</span>
-                          <span className="text-xs px-2 py-0.5 rounded-full font-600" style={{ backgroundColor: sc.bg, color: sc.color }}>{sc.label}</span>
-                          {hasFlagged && <AlertTriangle size={13} style={{ color: 'var(--danger)' }} />}
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-600"
+                            style={{ backgroundColor: tc.bg, color: tc.color }}
+                          >
+                            {tc.label}
+                          </span>
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full font-600"
+                            style={{ backgroundColor: sc.bg, color: sc.color }}
+                          >
+                            {sc.label}
+                          </span>
+                          {hasFlagged && (
+                            <AlertTriangle size={13} style={{ color: 'var(--danger)' }} />
+                          )}
                         </div>
                         <p className="text-sm font-700 text-foreground leading-snug">{cl.title}</p>
                         <div className="flex items-center gap-1 mt-0.5 text-xs text-muted-foreground">
-                          <MapPin size={11} />{cl.site}
+                          <MapPin size={11} />
+                          {cl.site}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <div className="text-right hidden sm:block">
-                          <p className="text-xs font-700 text-foreground font-tabular">{progress.pct}%</p>
-                          <p className="text-xs text-muted-foreground">{progress.done}/{progress.total}</p>
+                          <p className="text-xs font-700 text-foreground font-tabular">
+                            {progress.pct}%
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {progress.done}/{progress.total}
+                          </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Progress bar */}
-                    <div className="mt-3 h-1.5 rounded-full overflow-hidden" style={{ backgroundColor: 'var(--secondary)' }}>
+                    <div
+                      className="mt-3 h-1.5 rounded-full overflow-hidden"
+                      style={{ backgroundColor: 'var(--secondary)' }}
+                    >
                       <div
                         className="h-full rounded-full transition-all"
                         style={{
                           width: `${progress.pct}%`,
-                          backgroundColor: progress.pct === 100 ? 'var(--success)' : hasFlagged ? 'var(--danger)' : 'var(--accent)',
+                          backgroundColor:
+                            progress.pct === 100
+                              ? 'var(--success)'
+                              : hasFlagged
+                                ? 'var(--danger)'
+                                : 'var(--accent)',
                         }}
                       />
                     </div>
 
                     <div className="mt-2.5 flex items-center gap-3 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
-                        <div className="w-4 h-4 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0" style={{ backgroundColor: cl.avatarColor, fontSize: '8px' }}>
+                        <div
+                          className="w-4 h-4 rounded-full flex items-center justify-center text-white font-700 flex-shrink-0"
+                          style={{ backgroundColor: cl.avatarColor, fontSize: '8px' }}
+                        >
                           {cl.initials}
                         </div>
                         {cl.assignedTo}
                       </span>
-                      <span className="flex items-center gap-1"><Clock size={11} />{cl.date}</span>
+                      <span className="flex items-center gap-1">
+                        <Clock size={11} />
+                        {cl.date}
+                      </span>
                       {cl.signedOffBy && (
-                        <span className="flex items-center gap-1 ml-auto" style={{ color: 'var(--success)' }}>
-                          <CheckCircle2 size={11} />Signed off
+                        <span
+                          className="flex items-center gap-1 ml-auto"
+                          style={{ color: 'var(--success)' }}
+                        >
+                          <CheckCircle2 size={11} />
+                          Signed off
                         </span>
                       )}
                     </div>
@@ -810,12 +1130,15 @@ export default function ChecklistsPage() {
                   <ClipboardList size={40} className="empty-state-icon" />
                   <p className="empty-state-title">No checklists found</p>
                   <p className="empty-state-desc">
-                    {search || filterStatus !== 'all' || filterType !== 'all' ?'Try adjusting your search or filter criteria' :'Create your first checklist to start tracking field inspections'}
+                    {search || filterStatus !== 'all' || filterType !== 'all'
+                      ? 'Try adjusting your search or filter criteria'
+                      : 'Create your first checklist to start tracking field inspections'}
                   </p>
                   {canManage && !search && filterStatus === 'all' && filterType === 'all' && (
                     <div className="empty-state-action">
                       <button onClick={() => setShowNew(true)} className="btn-primary">
-                        <Plus size={15} />Create First Checklist
+                        <Plus size={15} />
+                        Create First Checklist
                       </button>
                     </div>
                   )}
@@ -824,19 +1147,63 @@ export default function ChecklistsPage() {
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="card-elevated flex items-center justify-between px-4 py-3">
-                  <p className="text-xs text-muted-foreground">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Showing {(page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </p>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="15 18 9 12 15 6" /></svg>
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground"
+                      >
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
                     </button>
-                    {Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
-                      <React.Fragment key={p}>
-                        {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-muted-foreground px-1">…</span>}
-                        <button onClick={() => setPage(p)} className="w-7 h-7 rounded-md text-xs font-600 transition-colors" style={{ backgroundColor: p === page ? 'var(--accent)' : 'transparent', color: p === page ? 'white' : 'var(--foreground)' }}>{p}</button>
-                      </React.Fragment>
-                    ))}
-                    <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="9 18 15 12 9 6" /></svg>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                      .map((p, idx, arr) => (
+                        <React.Fragment key={p}>
+                          {idx > 0 && arr[idx - 1] !== p - 1 && (
+                            <span className="text-xs text-muted-foreground px-1">…</span>
+                          )}
+                          <button
+                            onClick={() => setPage(p)}
+                            className="w-7 h-7 rounded-md text-xs font-600 transition-colors"
+                            style={{
+                              backgroundColor: p === page ? 'var(--accent)' : 'transparent',
+                              color: p === page ? 'white' : 'var(--foreground)',
+                            }}
+                          >
+                            {p}
+                          </button>
+                        </React.Fragment>
+                      ))}
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                    >
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        className="text-muted-foreground"
+                      >
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
                     </button>
                   </div>
                 </div>

@@ -24,7 +24,8 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   title: 'Innovion by Coralamy — intelligent Micro Business Operations Management',
-  description: 'Innovion by Coralamy brings customers, jobs, staff, contractors, scheduling, compliance, inventory and reporting together in one intelligent cloud platform for micro businesses.',
+  description:
+    'Innovion by Coralamy brings customers, jobs, staff, contractors, scheduling, compliance, inventory and reporting together in one intelligent cloud platform for micro businesses.',
   icons: {
     icon: [
       { url: '/assets/images/Favicon-1786073542962.png', type: 'image/png', sizes: '32x32' },
@@ -36,15 +37,14 @@ export const metadata: Metadata = {
   manifest: '/manifest.json',
   openGraph: {
     title: 'Innovion — intelligent Micro Business Operations Management',
-    description: 'Schedule contractors, manage compliance, track jobs in real time — all from one platform built for growing service businesses.',
+    description:
+      'Schedule contractors, manage compliance, track jobs in real time — all from one platform built for growing service businesses.',
     siteName: 'Innovion',
     type: 'website',
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={plusJakartaSans.variable} suppressHydrationWarning>
       <body className={plusJakartaSans.className}>
@@ -53,9 +53,7 @@ export default function RootLayout({
             <RBACProvider>
               <SubscriptionProvider>
                 <LocalisationProvider>
-                  <ErrorBoundary pageName="application">
-                    {children}
-                  </ErrorBoundary>
+                  <ErrorBoundary pageName="application">{children}</ErrorBoundary>
                 </LocalisationProvider>
               </SubscriptionProvider>
             </RBACProvider>
@@ -70,7 +68,7 @@ export default function RootLayout({
             },
           }}
         />
-</body>
+      </body>
     </html>
   );
 }

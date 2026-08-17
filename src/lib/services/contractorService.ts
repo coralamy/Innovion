@@ -21,6 +21,8 @@ export interface ContractorRow {
   joined_date: string;
   initials: string;
   color: string;
+  hourly_rate: number | null;
+  abn: string | null;
   company_id: string | null;
   created_at: string;
   updated_at: string;
@@ -44,6 +46,11 @@ export interface Contractor {
   joinedDate: string;
   initials: string;
   color: string;
+  /** Agreed charge-out rate. Added 20260817011000 — see migration for the
+   *  invoicing defect this closes. */
+  hourlyRate: number | null;
+  /** Contractor business identifier (ABN/NZBN/EIN). */
+  abn: string | null;
   companyId?: string | null;
 }
 
@@ -66,6 +73,8 @@ function rowToContractor(row: ContractorRow): Contractor {
     joinedDate: row.joined_date,
     initials: row.initials,
     color: row.color,
+    hourlyRate: row.hourly_rate ?? null,
+    abn: row.abn ?? null,
     companyId: row.company_id,
   };
 }
@@ -97,7 +106,10 @@ export const contractorService = {
       const { data, error } = await query;
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('contractorService', 'Failed to fetch contractors', { companyId, error: error.message });
+        logger.warn('contractorService', 'Failed to fetch contractors', {
+          companyId,
+          error: error.message,
+        });
         return [];
       }
       return (data as ContractorRow[]).map(rowToContractor);
@@ -107,7 +119,10 @@ export const contractorService = {
     }
   },
 
-  async create(contractor: Omit<Contractor, 'id'>, companyId?: string | null): Promise<Contractor | null> {
+  async create(
+    contractor: Omit<Contractor, 'id'>,
+    companyId?: string | null
+  ): Promise<Contractor | null> {
     const supabase = createClient();
     try {
       const { data, error } = await supabase
@@ -129,18 +144,28 @@ export const contractorService = {
           joined_date: contractor.joinedDate,
           initials: contractor.initials,
           color: contractor.color,
+          hourly_rate: contractor.hourlyRate ?? null,
+          abn: contractor.abn ?? null,
           company_id: companyId ?? contractor.companyId ?? null,
         })
         .select()
         .single();
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('contractorService', 'Failed to create contractor', { name: contractor.name, error: error.message });
+        logger.warn('contractorService', 'Failed to create contractor', {
+          name: contractor.name,
+          error: error.message,
+        });
         return null;
       }
       return rowToContractor(data as ContractorRow);
     } catch (err: unknown) {
-      logger.error('contractorService', 'Schema error creating contractor', { name: contractor.name }, err);
+      logger.error(
+        'contractorService',
+        'Schema error creating contractor',
+        { name: contractor.name },
+        err
+      );
       throw err;
     }
   },
@@ -149,9 +174,12 @@ export const contractorService = {
     const supabase = createClient();
     const dbUpdates: any = {};
     if (updates.availability !== undefined) dbUpdates.availability = updates.availability;
-    if (updates.complianceStatus !== undefined) dbUpdates.compliance_status = updates.complianceStatus;
+    if (updates.complianceStatus !== undefined)
+      dbUpdates.compliance_status = updates.complianceStatus;
     if (updates.hoursThisWeek !== undefined) dbUpdates.hours_this_week = updates.hoursThisWeek;
     if (updates.jobsCompleted !== undefined) dbUpdates.jobs_completed = updates.jobsCompleted;
+    if (updates.hourlyRate !== undefined) dbUpdates.hourly_rate = updates.hourlyRate;
+    if (updates.abn !== undefined) dbUpdates.abn = updates.abn;
     dbUpdates.updated_at = new Date().toISOString();
     try {
       const { data, error } = await supabase
@@ -162,7 +190,10 @@ export const contractorService = {
         .single();
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('contractorService', 'Failed to update contractor', { id, error: error.message });
+        logger.warn('contractorService', 'Failed to update contractor', {
+          id,
+          error: error.message,
+        });
         return null;
       }
       return rowToContractor(data as ContractorRow);

@@ -1,14 +1,36 @@
 'use client';
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import AppLayout from '@/components/AppLayout';
+import PlannedAction from '@/components/ui/PlannedAction';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRBAC } from '@/contexts/RBACContext';
 import { employeeService, EmployeeRecord } from '@/lib/services/employeeService';
 import { contractorService, Contractor } from '@/lib/services/contractorService';
 import { createClient } from '@/lib/supabase/client';
-import { Users, UserCheck, Search, RefreshCw, ChevronLeft, ChevronRight, MoreHorizontal, MapPin, Phone, Mail, Star, Briefcase, Clock, CheckCircle2, AlertCircle, XCircle, Calendar, Eye, Edit2, UserPlus, X,  } from 'lucide-react';
+import {
+  Users,
+  UserCheck,
+  Search,
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  MoreHorizontal,
+  MapPin,
+  Phone,
+  Mail,
+  Star,
+  Briefcase,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  XCircle,
+  Calendar,
+  Eye,
+  Edit2,
+  UserPlus,
+  X,
+} from 'lucide-react';
 import Icon from '@/components/ui/AppIcon';
-
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -40,20 +62,51 @@ interface RosterEntry {
 // ── Config ────────────────────────────────────────────────────────────────────
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string; label: string }> = {
-  active:      { bg: 'var(--success-bg)',  text: 'var(--success)',          dot: 'var(--success)',          label: 'Active' },
-  'on-leave':  { bg: 'var(--warning-bg)',  text: 'var(--warning)',          dot: 'var(--warning)',          label: 'On Leave' },
-  terminated:  { bg: 'var(--danger-bg)',   text: 'var(--danger)',           dot: 'var(--danger)',           label: 'Terminated' },
-  available:   { bg: 'var(--success-bg)',  text: 'var(--success)',          dot: 'var(--success)',          label: 'Available' },
-  'on-job':    { bg: 'var(--info-bg)',     text: 'var(--info)',             dot: 'var(--info)',             label: 'On Job' },
-  unavailable: { bg: 'var(--secondary)',   text: 'var(--muted-foreground)', dot: 'var(--muted-foreground)', label: 'Unavailable' },
-  leave:       { bg: 'var(--warning-bg)',  text: 'var(--warning)',          dot: 'var(--warning)',          label: 'On Leave' },
+  active: {
+    bg: 'var(--success-bg)',
+    text: 'var(--success)',
+    dot: 'var(--success)',
+    label: 'Active',
+  },
+  'on-leave': {
+    bg: 'var(--warning-bg)',
+    text: 'var(--warning)',
+    dot: 'var(--warning)',
+    label: 'On Leave',
+  },
+  terminated: {
+    bg: 'var(--danger-bg)',
+    text: 'var(--danger)',
+    dot: 'var(--danger)',
+    label: 'Terminated',
+  },
+  available: {
+    bg: 'var(--success-bg)',
+    text: 'var(--success)',
+    dot: 'var(--success)',
+    label: 'Available',
+  },
+  'on-job': { bg: 'var(--info-bg)', text: 'var(--info)', dot: 'var(--info)', label: 'On Job' },
+  unavailable: {
+    bg: 'var(--secondary)',
+    text: 'var(--muted-foreground)',
+    dot: 'var(--muted-foreground)',
+    label: 'Unavailable',
+  },
+  leave: {
+    bg: 'var(--warning-bg)',
+    text: 'var(--warning)',
+    dot: 'var(--warning)',
+    label: 'On Leave',
+  },
 };
 
-const complianceConfig: Record<string, { icon: React.ElementType; color: string; label: string }> = {
-  compliant: { icon: CheckCircle2, color: 'var(--success)', label: 'Compliant' },
-  expiring:  { icon: AlertCircle,  color: 'var(--warning)', label: 'Expiring' },
-  expired:   { icon: XCircle,      color: 'var(--danger)',  label: 'Expired' },
-};
+const complianceConfig: Record<string, { icon: React.ElementType; color: string; label: string }> =
+  {
+    compliant: { icon: CheckCircle2, color: 'var(--success)', label: 'Compliant' },
+    expiring: { icon: AlertCircle, color: 'var(--warning)', label: 'Expiring' },
+    expired: { icon: XCircle, color: 'var(--danger)', label: 'Expired' },
+  };
 
 const PAGE_SIZE = 20;
 
@@ -76,29 +129,50 @@ function StarRating({ rating }: { rating: number }) {
 }
 
 function KPICard({
-  icon: Icon, label, value, sub, color,
+  icon: Icon,
+  label,
+  value,
+  sub,
+  color,
 }: {
-  icon: React.ElementType; label: string; value: string | number; sub: string; color: string;
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  sub: string;
+  color: string;
 }) {
   return (
     <div className="card-elevated p-4 flex items-start gap-3">
-      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${color}18` }}>
+      <div
+        className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
+        style={{ backgroundColor: `${color}18` }}
+      >
         <Icon size={17} style={{ color }} />
       </div>
       <div className="min-w-0">
         <p className="text-xl font-800 font-tabular text-foreground leading-none">{value}</p>
-        <p className="text-[11px] font-600 uppercase tracking-wider mt-1 text-muted-foreground">{label}</p>
+        <p className="text-[11px] font-600 uppercase tracking-wider mt-1 text-muted-foreground">
+          {label}
+        </p>
         <p className="text-[11px] mt-0.5 text-muted-foreground">{sub}</p>
       </div>
     </div>
   );
 }
 
-function WorkerDetailPanel({ worker, onClose, canManage }: {
-  worker: RosterEntry; onClose: () => void; canManage: boolean;
+function WorkerDetailPanel({
+  worker,
+  onClose,
+  canManage,
+}: {
+  worker: RosterEntry;
+  onClose: () => void;
+  canManage: boolean;
 }) {
   const sc = statusConfig[worker.status] || statusConfig['unavailable'];
-  const cc = worker.complianceStatus ? (complianceConfig[worker.complianceStatus] || complianceConfig['compliant']) : null;
+  const cc = worker.complianceStatus
+    ? complianceConfig[worker.complianceStatus] || complianceConfig['compliant']
+    : null;
   const CompIcon = cc?.icon;
 
   return (
@@ -134,20 +208,28 @@ function WorkerDetailPanel({ worker, onClose, canManage }: {
         <span
           className="px-2 py-0.5 rounded-full text-[10px] font-600 capitalize"
           style={{
-            backgroundColor: worker.type === 'employee' ? 'rgba(37,99,235,0.1)' : 'rgba(139,92,246,0.1)',
+            backgroundColor:
+              worker.type === 'employee' ? 'rgba(37,99,235,0.1)' : 'rgba(139,92,246,0.1)',
             color: worker.type === 'employee' ? '#2563EB' : '#8B5CF6',
           }}
         >
           {worker.type}
         </span>
         {worker.employmentType && (
-          <span className="px-2 py-0.5 rounded-full text-[10px] font-600 capitalize" style={{ backgroundColor: 'var(--secondary)', color: 'var(--muted-foreground)' }}>
+          <span
+            className="px-2 py-0.5 rounded-full text-[10px] font-600 capitalize"
+            style={{ backgroundColor: 'var(--secondary)', color: 'var(--muted-foreground)' }}
+          >
             {worker.employmentType}
           </span>
         )}
         {cc && CompIcon && (
-          <span className="flex items-center gap-1 text-[10px] font-600" style={{ color: cc.color }}>
-            <CompIcon size={11} />{cc.label}
+          <span
+            className="flex items-center gap-1 text-[10px] font-600"
+            style={{ color: cc.color }}
+          >
+            <CompIcon size={11} />
+            {cc.label}
           </span>
         )}
       </div>
@@ -158,12 +240,14 @@ function WorkerDetailPanel({ worker, onClose, canManage }: {
           { icon: Phone, label: worker.phone },
           { icon: Mail, label: worker.email },
           { icon: MapPin, label: worker.location },
-        ].filter((i) => i.label).map((item) => (
-          <div key={item.label} className="flex items-center gap-2 text-xs">
-            <item.icon size={12} className="text-muted-foreground flex-shrink-0" />
-            <span className="text-foreground truncate">{item.label}</span>
-          </div>
-        ))}
+        ]
+          .filter((i) => i.label)
+          .map((item) => (
+            <div key={item.label} className="flex items-center gap-2 text-xs">
+              <item.icon size={12} className="text-muted-foreground flex-shrink-0" />
+              <span className="text-foreground truncate">{item.label}</span>
+            </div>
+          ))}
       </div>
 
       {/* Stats */}
@@ -176,7 +260,11 @@ function WorkerDetailPanel({ worker, onClose, canManage }: {
           ...(worker.startDate ? [{ label: 'Start Date', value: worker.startDate }] : []),
           ...(worker.department ? [{ label: 'Department', value: worker.department }] : []),
         ].map((m) => (
-          <div key={m.label} className="p-2.5 rounded-lg" style={{ backgroundColor: 'var(--secondary)' }}>
+          <div
+            key={m.label}
+            className="p-2.5 rounded-lg"
+            style={{ backgroundColor: 'var(--secondary)' }}
+          >
             <p className="text-sm font-700 text-foreground font-tabular">{m.value}</p>
             <p className="text-[10px] text-muted-foreground mt-0.5">{m.label}</p>
           </div>
@@ -185,17 +273,25 @@ function WorkerDetailPanel({ worker, onClose, canManage }: {
 
       {/* Rating */}
       <div>
-        <p className="text-[10px] font-600 uppercase tracking-wider text-muted-foreground mb-1.5">Performance Rating</p>
+        <p className="text-[10px] font-600 uppercase tracking-wider text-muted-foreground mb-1.5">
+          Performance Rating
+        </p>
         <StarRating rating={worker.rating} />
       </div>
 
       {/* Skills */}
       {worker.skills.length > 0 && (
         <div>
-          <p className="text-[10px] font-600 uppercase tracking-wider text-muted-foreground mb-1.5">Skills</p>
+          <p className="text-[10px] font-600 uppercase tracking-wider text-muted-foreground mb-1.5">
+            Skills
+          </p>
           <div className="flex flex-wrap gap-1">
             {worker.skills.map((s) => (
-              <span key={s} className="px-2 py-0.5 rounded-full text-[10px] font-500" style={{ backgroundColor: 'var(--secondary)', color: 'var(--muted-foreground)' }}>
+              <span
+                key={s}
+                className="px-2 py-0.5 rounded-full text-[10px] font-500"
+                style={{ backgroundColor: 'var(--secondary)', color: 'var(--muted-foreground)' }}
+              >
                 {s}
               </span>
             ))}
@@ -206,12 +302,20 @@ function WorkerDetailPanel({ worker, onClose, canManage }: {
       {/* Actions */}
       {canManage && (
         <div className="flex gap-2 pt-1">
-          <button className="flex-1 py-2 rounded-lg text-xs font-600 text-white transition-opacity hover:opacity-90" style={{ backgroundColor: 'var(--accent)' }}>
+          <PlannedAction
+            className="flex-1 py-2 rounded-lg text-xs font-600 text-white"
+            style={{ backgroundColor: 'var(--accent)' }}
+            title="Assigning a job from the roster is not available yet."
+          >
             Assign Job
-          </button>
-          <button className="flex-1 py-2 rounded-lg text-xs font-600 border transition-colors hover:bg-secondary" style={{ borderColor: 'var(--border)' }}>
+          </PlannedAction>
+          <PlannedAction
+            className="flex-1 py-2 rounded-lg text-xs font-600 border"
+            style={{ borderColor: 'var(--border)' }}
+            title="Editing a worker record is not available yet."
+          >
             Edit
-          </button>
+          </PlannedAction>
         </div>
       )}
     </div>
@@ -268,12 +372,32 @@ export default function WorkforceRosterPage() {
     const supabase = createClient();
     const channel = supabase
       .channel('roster-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'employees', ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}) }, () => load(true))
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'contractors', ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}) }, () => load(true))
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'employees',
+          ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}),
+        },
+        () => load(true)
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'contractors',
+          ...(companyId ? { filter: `company_id=eq.${companyId}` } : {}),
+        },
+        () => load(true)
+      )
       .subscribe();
     channelRef.current = channel;
-    return () => { supabase.removeChannel(channel); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      supabase.removeChannel(channel);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   // Merge into unified roster
@@ -315,14 +439,17 @@ export default function WorkforceRosterPage() {
       color: c.color || 'var(--accent)',
       skills: c.skills ?? [],
       complianceStatus: c.complianceStatus,
-      hourlyRate: c.hourlyRate?.toString(),
-      abn: c.abn,
+      hourlyRate: c.hourlyRate != null ? c.hourlyRate.toString() : undefined,
+      abn: c.abn ?? undefined,
     }));
 
     return [...empEntries, ...conEntries];
   }, [employees, contractors]);
 
-  const departments = useMemo(() => Array.from(new Set(roster.map((r) => r.department))).sort(), [roster]);
+  const departments = useMemo(
+    () => Array.from(new Set(roster.map((r) => r.department))).sort(),
+    [roster]
+  );
 
   const filtered = useMemo(() => {
     let list = roster;
@@ -331,11 +458,12 @@ export default function WorkforceRosterPage() {
     if (filterDept !== 'all') list = list.filter((r) => r.department === filterDept);
     if (search) {
       const q = search.toLowerCase();
-      list = list.filter((r) =>
-        r.name.toLowerCase().includes(q) ||
-        r.role.toLowerCase().includes(q) ||
-        r.department.toLowerCase().includes(q) ||
-        r.location.toLowerCase().includes(q)
+      list = list.filter(
+        (r) =>
+          r.name.toLowerCase().includes(q) ||
+          r.role.toLowerCase().includes(q) ||
+          r.department.toLowerCase().includes(q) ||
+          r.location.toLowerCase().includes(q)
       );
     }
     return [...list].sort((a, b) => {
@@ -349,14 +477,19 @@ export default function WorkforceRosterPage() {
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const kpis = useMemo(() => ({
-    total: roster.length,
-    employees: employees.length,
-    contractors: contractors.length,
-    active: roster.filter((r) => r.status === 'active' || r.status === 'available' || r.status === 'on-job').length,
-    onLeave: roster.filter((r) => r.status === 'on-leave' || r.status === 'leave').length,
-    complianceIssues: contractors.filter((c) => c.complianceStatus !== 'compliant').length,
-  }), [roster, employees, contractors]);
+  const kpis = useMemo(
+    () => ({
+      total: roster.length,
+      employees: employees.length,
+      contractors: contractors.length,
+      active: roster.filter(
+        (r) => r.status === 'active' || r.status === 'available' || r.status === 'on-job'
+      ).length,
+      onLeave: roster.filter((r) => r.status === 'on-leave' || r.status === 'leave').length,
+      complianceIssues: contractors.filter((c) => c.complianceStatus !== 'compliant').length,
+    }),
+    [roster, employees, contractors]
+  );
 
   const allStatuses = useMemo(() => {
     const s = new Set(roster.map((r) => r.status));
@@ -366,11 +499,13 @@ export default function WorkforceRosterPage() {
   return (
     <AppLayout currentPath="/workforce-roster">
       <div className="space-y-6 animate-fade-in">
-
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-[1.375rem] font-800 tracking-tight text-foreground" style={{ letterSpacing: '-0.02em' }}>
+            <h1
+              className="text-[1.375rem] font-800 tracking-tight text-foreground"
+              style={{ letterSpacing: '-0.02em' }}
+            >
               Workforce Roster
             </h1>
             <p className="text-[13px] mt-1 text-muted-foreground">
@@ -380,9 +515,16 @@ export default function WorkforceRosterPage() {
           <div className="flex items-center gap-2">
             <div
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-600"
-              style={{ backgroundColor: 'rgba(16,185,129,0.08)', color: '#059669', border: '1px solid rgba(16,185,129,0.15)' }}
+              style={{
+                backgroundColor: 'rgba(16,185,129,0.08)',
+                color: '#059669',
+                border: '1px solid rgba(16,185,129,0.15)',
+              }}
             >
-              <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ backgroundColor: 'var(--success)' }} />
+              <span
+                className="w-1.5 h-1.5 rounded-full animate-pulse"
+                style={{ backgroundColor: 'var(--success)' }}
+              />
               Live
             </div>
             <button
@@ -395,9 +537,13 @@ export default function WorkforceRosterPage() {
               {refreshing ? 'Refreshing…' : 'Refresh'}
             </button>
             {canManage && (
-              <button className="btn-primary">
-                <UserPlus size={14} />Add Worker
-              </button>
+              <PlannedAction
+                className="btn-primary"
+                title="Adding a worker from the roster is not available yet — add employees and contractors from their own pages."
+              >
+                <UserPlus size={14} />
+                Add Worker
+              </PlannedAction>
             )}
           </div>
         </div>
@@ -407,31 +553,78 @@ export default function WorkforceRosterPage() {
           <div className="alert-error" role="alert">
             <AlertCircle size={15} className="flex-shrink-0" />
             <span className="flex-1 text-sm">{error}</span>
-            <button onClick={() => load()} className="text-xs font-600 underline underline-offset-2">Retry</button>
+            <button
+              onClick={() => load()}
+              className="text-xs font-600 underline underline-offset-2"
+            >
+              Retry
+            </button>
           </div>
         )}
 
         {/* KPIs */}
         <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
-          <KPICard icon={Users}        label="Total Workforce" value={kpis.total}            sub="employees + contractors" color="var(--accent)" />
-          <KPICard icon={Users}        label="Employees"       value={kpis.employees}        sub="direct staff"           color="#2563EB" />
-          <KPICard icon={UserCheck}    label="Contractors"     value={kpis.contractors}      sub="external workforce"     color="#8B5CF6" />
-          <KPICard icon={CheckCircle2} label="Active Now"      value={kpis.active}           sub="working or available"   color="var(--success)" />
-          <KPICard icon={Clock}        label="On Leave"        value={kpis.onLeave}          sub="currently absent"       color="var(--warning)" />
-          <KPICard icon={AlertCircle}  label="Compliance"      value={kpis.complianceIssues} sub="issues to resolve"      color={kpis.complianceIssues > 0 ? 'var(--danger)' : 'var(--success)'} />
+          <KPICard
+            icon={Users}
+            label="Total Workforce"
+            value={kpis.total}
+            sub="employees + contractors"
+            color="var(--accent)"
+          />
+          <KPICard
+            icon={Users}
+            label="Employees"
+            value={kpis.employees}
+            sub="direct staff"
+            color="#2563EB"
+          />
+          <KPICard
+            icon={UserCheck}
+            label="Contractors"
+            value={kpis.contractors}
+            sub="external workforce"
+            color="#8B5CF6"
+          />
+          <KPICard
+            icon={CheckCircle2}
+            label="Active Now"
+            value={kpis.active}
+            sub="working or available"
+            color="var(--success)"
+          />
+          <KPICard
+            icon={Clock}
+            label="On Leave"
+            value={kpis.onLeave}
+            sub="currently absent"
+            color="var(--warning)"
+          />
+          <KPICard
+            icon={AlertCircle}
+            label="Compliance"
+            value={kpis.complianceIssues}
+            sub="issues to resolve"
+            color={kpis.complianceIssues > 0 ? 'var(--danger)' : 'var(--success)'}
+          />
         </div>
 
         {/* Filters */}
         <div className="filter-bar flex-wrap gap-2">
           {/* Search */}
           <div className="flex-1 min-w-[200px] relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Search
+              size={13}
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+            />
             <input
               suppressHydrationWarning
               type="text"
               placeholder="Search name, role, location…"
               value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               className="input-field input-field-search"
             />
           </div>
@@ -441,7 +634,10 @@ export default function WorkforceRosterPage() {
             {(['all', 'employee', 'contractor'] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => { setFilterType(t); setPage(1); }}
+                onClick={() => {
+                  setFilterType(t);
+                  setPage(1);
+                }}
                 className={`period-btn capitalize ${filterType === t ? 'active' : ''}`}
               >
                 {t === 'all' ? 'All' : t === 'employee' ? 'Employees' : 'Contractors'}
@@ -453,12 +649,17 @@ export default function WorkforceRosterPage() {
           <select
             suppressHydrationWarning
             value={filterStatus}
-            onChange={(e) => { setFilterStatus(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPage(1);
+            }}
             className="select-field"
           >
             <option value="all">All Status</option>
             {allStatuses.map((s) => (
-              <option key={s} value={s}>{statusConfig[s]?.label || s}</option>
+              <option key={s} value={s}>
+                {statusConfig[s]?.label || s}
+              </option>
             ))}
           </select>
 
@@ -466,11 +667,18 @@ export default function WorkforceRosterPage() {
           <select
             suppressHydrationWarning
             value={filterDept}
-            onChange={(e) => { setFilterDept(e.target.value); setPage(1); }}
+            onChange={(e) => {
+              setFilterDept(e.target.value);
+              setPage(1);
+            }}
             className="select-field"
           >
             <option value="all">All Departments</option>
-            {departments.map((d) => <option key={d} value={d}>{d}</option>)}
+            {departments.map((d) => (
+              <option key={d} value={d}>
+                {d}
+              </option>
+            ))}
           </select>
 
           {/* Sort */}
@@ -486,7 +694,9 @@ export default function WorkforceRosterPage() {
             <option value="jobs">Sort: Jobs Done</option>
           </select>
 
-          <span className="text-xs text-muted-foreground ml-auto self-center">{filtered.length} workers</span>
+          <span className="text-xs text-muted-foreground ml-auto self-center">
+            {filtered.length} workers
+          </span>
         </div>
 
         {/* Content */}
@@ -507,7 +717,6 @@ export default function WorkforceRosterPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-
             {/* List */}
             <div className="xl:col-span-2 space-y-2">
               {paginated.length === 0 ? (
@@ -544,13 +753,19 @@ export default function WorkforceRosterPage() {
                                 className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] font-600"
                                 style={{ backgroundColor: sc.bg, color: sc.text }}
                               >
-                                <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: sc.dot }} />
+                                <span
+                                  className="w-1.5 h-1.5 rounded-full"
+                                  style={{ backgroundColor: sc.dot }}
+                                />
                                 {sc.label}
                               </span>
                               <span
                                 className="px-1.5 py-0.5 rounded-full text-[10px] font-600 capitalize"
                                 style={{
-                                  backgroundColor: worker.type === 'employee' ? 'rgba(37,99,235,0.1)' : 'rgba(139,92,246,0.1)',
+                                  backgroundColor:
+                                    worker.type === 'employee'
+                                      ? 'rgba(37,99,235,0.1)'
+                                      : 'rgba(139,92,246,0.1)',
                                   color: worker.type === 'employee' ? '#2563EB' : '#8B5CF6',
                                 }}
                               >
@@ -565,18 +780,25 @@ export default function WorkforceRosterPage() {
                               <StarRating rating={worker.rating} />
                               {worker.location && (
                                 <span className="text-[11px] text-muted-foreground flex items-center gap-1">
-                                  <MapPin size={10} />{worker.location}
+                                  <MapPin size={10} />
+                                  {worker.location}
                                 </span>
                               )}
-                              {worker.complianceStatus && worker.complianceStatus !== 'compliant' && (() => {
-                                const cc = complianceConfig[worker.complianceStatus];
-                                const CIcon = cc?.icon;
-                                return CIcon ? (
-                                  <span className="flex items-center gap-1 text-[11px] font-600" style={{ color: cc.color }}>
-                                    <CIcon size={10} />{cc.label}
-                                  </span>
-                                ) : null;
-                              })()}
+                              {worker.complianceStatus &&
+                                worker.complianceStatus !== 'compliant' &&
+                                (() => {
+                                  const cc = complianceConfig[worker.complianceStatus];
+                                  const CIcon = cc?.icon;
+                                  return CIcon ? (
+                                    <span
+                                      className="flex items-center gap-1 text-[11px] font-600"
+                                      style={{ color: cc.color }}
+                                    >
+                                      <CIcon size={10} />
+                                      {cc.label}
+                                    </span>
+                                  ) : null;
+                                })()}
                             </div>
                           </div>
                         </div>
@@ -584,17 +806,24 @@ export default function WorkforceRosterPage() {
                         {/* Right stats */}
                         <div className="flex items-center gap-4 flex-shrink-0">
                           <div className="text-right hidden sm:block">
-                            <p className="text-sm font-700 text-foreground font-tabular">{worker.hoursThisWeek}h</p>
+                            <p className="text-sm font-700 text-foreground font-tabular">
+                              {worker.hoursThisWeek}h
+                            </p>
                             <p className="text-[10px] text-muted-foreground">this week</p>
                           </div>
                           <div className="text-right hidden md:block">
-                            <p className="text-sm font-700 text-foreground font-tabular">{worker.jobsCompleted}</p>
+                            <p className="text-sm font-700 text-foreground font-tabular">
+                              {worker.jobsCompleted}
+                            </p>
                             <p className="text-[10px] text-muted-foreground">jobs done</p>
                           </div>
                           {canManage && (
                             <div className="relative">
                               <button
-                                onClick={(e) => { e.stopPropagation(); setOpenMenu(openMenu === worker.id ? null : worker.id); }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenMenu(openMenu === worker.id ? null : worker.id);
+                                }}
                                 className="btn-ghost p-1.5"
                                 aria-label="Actions"
                               >
@@ -610,11 +839,16 @@ export default function WorkforceRosterPage() {
                                   ].map((a) => (
                                     <button
                                       key={a.label}
-                                      onClick={(e) => { e.stopPropagation(); setSelected(worker); setOpenMenu(null); }}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelected(worker);
+                                        setOpenMenu(null);
+                                      }}
                                       className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-secondary transition-colors text-left"
                                       style={{ color: 'var(--foreground)' }}
                                     >
-                                      <a.icon size={13} className="text-muted-foreground" />{a.label}
+                                      <a.icon size={13} className="text-muted-foreground" />
+                                      {a.label}
                                     </button>
                                   ))}
                                 </div>
@@ -632,7 +866,8 @@ export default function WorkforceRosterPage() {
               {totalPages > 1 && (
                 <div className="card-elevated flex items-center justify-between px-4 py-3">
                   <p className="text-xs text-muted-foreground">
-                    Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
+                    Showing {(page - 1) * PAGE_SIZE + 1}–
+                    {Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <button
@@ -676,12 +911,18 @@ export default function WorkforceRosterPage() {
             {/* Detail panel */}
             <div className="xl:col-span-1">
               {selected ? (
-                <WorkerDetailPanel worker={selected} onClose={() => setSelected(null)} canManage={canManage} />
+                <WorkerDetailPanel
+                  worker={selected}
+                  onClose={() => setSelected(null)}
+                  canManage={canManage}
+                />
               ) : (
                 <div className="card-elevated p-8 text-center">
                   <Users size={36} className="mx-auto text-muted-foreground mb-3 opacity-30" />
                   <p className="text-sm font-600 text-foreground">Select a worker</p>
-                  <p className="text-xs text-muted-foreground mt-1">Click any row to view details</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Click any row to view details
+                  </p>
                 </div>
               )}
             </div>

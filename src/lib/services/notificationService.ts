@@ -71,10 +71,15 @@ export const notificationService = {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(200);
-    if (companyId) { query = query.eq('company_id', companyId); }
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
     const { data, error } = await query;
     if (error) {
-      logger.error('notificationService', 'Failed to fetch notifications', { companyId, error: error.message });
+      logger.error('notificationService', 'Failed to fetch notifications', {
+        companyId,
+        error: error.message,
+      });
       return [];
     }
     // Filter out expired notifications client-side
@@ -90,7 +95,9 @@ export const notificationService = {
       .from('notifications')
       .select('id', { count: 'exact', head: true })
       .eq('is_read', false);
-    if (companyId) { query = query.eq('company_id', companyId); }
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
     const { count, error } = await query;
     if (error) {
       logger.error('notificationService', 'Failed to fetch unread count', { error: error.message });
@@ -101,12 +108,12 @@ export const notificationService = {
 
   async markRead(id: string): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('notifications')
-      .update({ is_read: true })
-      .eq('id', id);
+    const { error } = await supabase.from('notifications').update({ is_read: true }).eq('id', id);
     if (error) {
-      logger.error('notificationService', 'Failed to mark notification read', { id, error: error.message });
+      logger.error('notificationService', 'Failed to mark notification read', {
+        id,
+        error: error.message,
+      });
       return false;
     }
     return true;
@@ -115,10 +122,15 @@ export const notificationService = {
   async markAllRead(companyId?: string | null): Promise<boolean> {
     const supabase = createClient();
     let query = supabase.from('notifications').update({ is_read: true }).eq('is_read', false);
-    if (companyId) { query = query.eq('company_id', companyId); }
+    if (companyId) {
+      query = query.eq('company_id', companyId);
+    }
     const { error } = await query;
     if (error) {
-      logger.error('notificationService', 'Failed to mark all notifications read', { companyId, error: error.message });
+      logger.error('notificationService', 'Failed to mark all notifications read', {
+        companyId,
+        error: error.message,
+      });
       return false;
     }
     return true;
@@ -128,7 +140,10 @@ export const notificationService = {
     const supabase = createClient();
     const { error } = await supabase.from('notifications').delete().eq('id', id);
     if (error) {
-      logger.error('notificationService', 'Failed to delete notification', { id, error: error.message });
+      logger.error('notificationService', 'Failed to delete notification', {
+        id,
+        error: error.message,
+      });
       return false;
     }
     return true;
@@ -164,7 +179,10 @@ export const notificationService = {
       .select()
       .single();
     if (error) {
-      logger.error('notificationService', 'Failed to create notification', { title: notification.title, error: error.message });
+      logger.error('notificationService', 'Failed to create notification', {
+        title: notification.title,
+        error: error.message,
+      });
       return null;
     }
     return rowToNotification(data as NotificationRow);
@@ -177,13 +195,23 @@ export const notificationService = {
       .select('*')
       .eq('user_id', userId);
     if (error) {
-      logger.error('notificationService', 'Failed to fetch notification preferences', { userId, error: error.message });
+      logger.error('notificationService', 'Failed to fetch notification preferences', {
+        userId,
+        error: error.message,
+      });
       return [];
     }
-    return (data as Array<{
-      id: string; user_id: string; company_id: string | null;
-      category: string; email_enabled: boolean; push_enabled: boolean; in_app_enabled: boolean;
-    }>).map((r) => ({
+    return (
+      data as Array<{
+        id: string;
+        user_id: string;
+        company_id: string | null;
+        category: string;
+        email_enabled: boolean;
+        push_enabled: boolean;
+        in_app_enabled: boolean;
+      }>
+    ).map((r) => ({
       id: r.id,
       userId: r.user_id,
       companyId: r.company_id,
@@ -196,9 +224,8 @@ export const notificationService = {
 
   async upsertPreference(pref: NotificationPreference): Promise<boolean> {
     const supabase = createClient();
-    const { error } = await supabase
-      .from('notification_preferences')
-      .upsert({
+    const { error } = await supabase.from('notification_preferences').upsert(
+      {
         user_id: pref.userId,
         company_id: pref.companyId ?? null,
         category: pref.category,
@@ -206,9 +233,14 @@ export const notificationService = {
         push_enabled: pref.pushEnabled,
         in_app_enabled: pref.inAppEnabled,
         updated_at: new Date().toISOString(),
-      }, { onConflict: 'user_id,category' });
+      },
+      { onConflict: 'user_id,category' }
+    );
     if (error) {
-      logger.error('notificationService', 'Failed to upsert notification preference', { category: pref.category, error: error.message });
+      logger.error('notificationService', 'Failed to upsert notification preference', {
+        category: pref.category,
+        error: error.message,
+      });
       return false;
     }
     return true;

@@ -23,12 +23,33 @@ interface DashboardData {
     expiringCompliance: number;
     weeklyRevenue: number;
   };
-  upcomingJobs: Array<{ id: string; job_number: string; site: string; assigned_to: string; scheduled_time: string; job_status: string }>;
-  recentActivity: Array<{ id: string; action: string; entity_type: string; description: string; created_at: string; user_id: string; metadata: unknown }>;
+  upcomingJobs: Array<{
+    id: string;
+    job_number: string;
+    site: string;
+    assigned_to: string;
+    scheduled_time: string;
+    job_status: string;
+  }>;
+  recentActivity: Array<{
+    id: string;
+    action: string;
+    entity_type: string;
+    description: string;
+    created_at: string;
+    user_id: string;
+    metadata: unknown;
+  }>;
   weeklyJobsData: Array<{ day: string; scheduled: number; completed: number; issues: number }>;
   weekLabel: string;
   serviceTypeData: Array<{ name: string; value: number }>;
-  contractorStatus: Array<{ id: string; name: string; initials: string; status: string; utilization: number }>;
+  contractorStatus: Array<{
+    id: string;
+    name: string;
+    initials: string;
+    status: string;
+    utilization: number;
+  }>;
 }
 
 export default function DashboardPage() {
@@ -41,13 +62,18 @@ export default function DashboardPage() {
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    settingsService.get(companyId).then((settings) => {
-      setCompanyName(settings?.companyName || user?.user_metadata?.company_name || 'Your Company');
-      setNameLoaded(true);
-    }).catch(() => {
-      setCompanyName(user?.user_metadata?.company_name || 'Your Company');
-      setNameLoaded(true);
-    });
+    settingsService
+      .get(companyId)
+      .then((settings) => {
+        setCompanyName(
+          settings?.companyName || user?.user_metadata?.company_name || 'Your Company'
+        );
+        setNameLoaded(true);
+      })
+      .catch(() => {
+        setCompanyName(user?.user_metadata?.company_name || 'Your Company');
+        setNameLoaded(true);
+      });
   }, [companyId, user]);
 
   const fetchDashboard = useCallback(async () => {
@@ -80,13 +106,21 @@ export default function DashboardPage() {
         {/* Page header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h1 className="text-[1.375rem] font-800 tracking-tight" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
+            <h1
+              className="text-[1.375rem] font-800 tracking-tight"
+              style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}
+            >
               Operations Dashboard
             </h1>
-            <p className="text-[13px] mt-1 flex items-center gap-1.5" style={{ color: 'var(--muted-foreground)' }}>
+            <p
+              className="text-[13px] mt-1 flex items-center gap-1.5"
+              style={{ color: 'var(--muted-foreground)' }}
+            >
               {nameLoaded ? (
                 <>
-                  <span className="font-500" style={{ color: 'var(--foreground)' }}>{companyName}</span>
+                  <span className="font-500" style={{ color: 'var(--foreground)' }}>
+                    {companyName}
+                  </span>
                   <span className="opacity-40">·</span>
                   <DashboardDate />
                 </>
@@ -99,7 +133,11 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2.5 flex-shrink-0">
             <div
               className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-600"
-              style={{ backgroundColor: 'rgba(16,185,129,0.08)', color: '#059669', border: '1px solid rgba(16,185,129,0.15)' }}
+              style={{
+                backgroundColor: 'rgba(16,185,129,0.08)',
+                color: '#059669',
+                border: '1px solid rgba(16,185,129,0.15)',
+              }}
             >
               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
               Live
@@ -107,10 +145,18 @@ export default function DashboardPage() {
             <button
               onClick={handleRefresh}
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[12px] font-500 transition-all duration-150 hover:scale-105 active:scale-95"
-              style={{ backgroundColor: 'var(--secondary)', color: 'var(--muted-foreground)', border: '1px solid var(--border)' }}
+              style={{
+                backgroundColor: 'var(--secondary)',
+                color: 'var(--muted-foreground)',
+                border: '1px solid var(--border)',
+              }}
               aria-label="Refresh dashboard"
             >
-              <RefreshCw size={12} className={refreshing ? 'animate-spin' : ''} style={{ transition: 'transform 300ms ease' }} />
+              <RefreshCw
+                size={12}
+                className={refreshing ? 'animate-spin' : ''}
+                style={{ transition: 'transform 300ms ease' }}
+              />
               <span className="hidden sm:inline">Refresh</span>
             </button>
           </div>
@@ -152,7 +198,14 @@ function DashboardDate() {
   const [dateStr, setDateStr] = useState('');
   useEffect(() => {
     const d = new Date();
-    setDateStr(d.toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    setDateStr(
+      d.toLocaleDateString('en-AU', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    );
   }, []);
   return <span>{dateStr}</span>;
 }

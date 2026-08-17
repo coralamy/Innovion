@@ -38,7 +38,13 @@ function jobHeight(durationMinutes: number): number {
   return Math.max((durationMinutes / 60) * HOUR_HEIGHT, 28);
 }
 
-export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, weekDates }: WeekViewCalendarProps) {
+export default function WeekViewCalendar({
+  weekOffset,
+  filters,
+  onNewJob,
+  jobs,
+  weekDates,
+}: WeekViewCalendarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [selectedJob, setSelectedJob] = useState<ScheduledJob | null>(null);
   const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
@@ -51,7 +57,8 @@ export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, 
       if (contractorSlug !== filters.contractor) return false;
     }
     if (filters.status !== 'all' && job.status !== filters.status) return false;
-    if (filters.region !== 'all' && job.region.toLowerCase().replace(/\s+/g, '') !== filters.region) return false;
+    if (filters.region !== 'all' && job.region.toLowerCase().replace(/\s+/g, '') !== filters.region)
+      return false;
     if (filters.client !== 'all') {
       const clientSlug = job.client.toLowerCase().replace(/\s+/g, '');
       if (!clientSlug.includes(filters.client.replace(/\s+/g, ''))) return false;
@@ -69,7 +76,10 @@ export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, 
   return (
     <div className="flex flex-col h-full overflow-hidden bg-background">
       {/* Day headers */}
-      <div className="flex-shrink-0 flex border-b border-border bg-card" style={{ paddingLeft: '56px' }}>
+      <div
+        className="flex-shrink-0 flex border-b border-border bg-card"
+        style={{ paddingLeft: '56px' }}
+      >
         {days.map((day, i) => {
           const dateStr = weekDates[i];
           const dateNum = dateStr ? parseInt(dateStr.split('-')[2]) : i + 1;
@@ -79,7 +89,10 @@ export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, 
               key={`dayhead-${day}`}
               className="flex-1 text-center py-3 border-l border-border first:border-l-0"
             >
-              <p className="text-xs font-600 uppercase tracking-wide" style={{ color: isToday ? 'var(--accent)' : 'var(--muted-foreground)' }}>
+              <p
+                className="text-xs font-600 uppercase tracking-wide"
+                style={{ color: isToday ? 'var(--accent)' : 'var(--muted-foreground)' }}
+              >
                 {day}
               </p>
               <div
@@ -134,7 +147,10 @@ export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, 
                   <div
                     key={`hline-${day}-${i}`}
                     className="absolute left-0 right-0 border-t border-border"
-                    style={{ top: `${i * HOUR_HEIGHT}px`, borderColor: i % 2 === 0 ? 'var(--border)' : 'rgba(226,232,240,0.4)' }}
+                    style={{
+                      top: `${i * HOUR_HEIGHT}px`,
+                      borderColor: i % 2 === 0 ? 'var(--border)' : 'rgba(226,232,240,0.4)',
+                    }}
                   />
                 ))}
 
@@ -164,12 +180,20 @@ export default function WeekViewCalendar({ weekOffset, filters, onNewJob, jobs, 
                       <div className="flex items-start gap-1 h-full overflow-hidden">
                         <div className="flex-1 min-w-0">
                           {!isShort && (
-                            <p className="font-700 leading-tight truncate" style={{ color: colors.text, fontSize: '10px' }}>
+                            <p
+                              className="font-700 leading-tight truncate"
+                              style={{ color: colors.text, fontSize: '10px' }}
+                            >
                               {job.site.length > 18 ? job.site.substring(0, 16) + '…' : job.site}
                             </p>
                           )}
-                          <p className="font-500 truncate" style={{ color: colors.text, opacity: 0.85, fontSize: '9px' }}>
-                            {isShort ? job.site.substring(0, 12) : `${startH}:${startM} · ${job.contractorInitials}`}
+                          <p
+                            className="font-500 truncate"
+                            style={{ color: colors.text, opacity: 0.85, fontSize: '9px' }}
+                          >
+                            {isShort
+                              ? job.site.substring(0, 12)
+                              : `${startH}:${startM} · ${job.contractorInitials}`}
                           </p>
                         </div>
                         <div className="flex flex-col gap-0.5 flex-shrink-0">

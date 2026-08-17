@@ -76,7 +76,9 @@ function isSchemaError(error: unknown): boolean {
     if (cls === '23') return false;
   }
   if (typeof e.message === 'string') {
-    return /relation.*does not exist|column.*does not exist|function.*does not exist|syntax error/i.test(e.message);
+    return /relation.*does not exist|column.*does not exist|function.*does not exist|syntax error/i.test(
+      e.message
+    );
   }
   return false;
 }
@@ -127,7 +129,10 @@ export const jobService = {
         .single();
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('jobService', 'Failed to create job', { title: job.title, error: error.message });
+        logger.warn('jobService', 'Failed to create job', {
+          title: job.title,
+          error: error.message,
+        });
         return null;
       }
       return rowToJob(data as JobRow);
@@ -148,7 +153,11 @@ export const jobService = {
         .single();
       if (error) {
         if (isSchemaError(error)) throw error;
-        logger.warn('jobService', 'Failed to update job status', { id, status, error: error.message });
+        logger.warn('jobService', 'Failed to update job status', {
+          id,
+          status,
+          error: error.message,
+        });
         return null;
       }
       return rowToJob(data as JobRow);

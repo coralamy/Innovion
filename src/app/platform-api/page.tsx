@@ -4,7 +4,18 @@ import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRBAC } from '@/contexts/RBACContext';
 import AppLayout from '@/components/AppLayout';
-import { Key, Plus, Copy, Check, AlertTriangle, X, Loader2, CheckCircle2, XCircle, Code2 } from 'lucide-react';
+import {
+  Key,
+  Plus,
+  Copy,
+  Check,
+  AlertTriangle,
+  X,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Code2,
+} from 'lucide-react';
 import {
   listApiKeys,
   createApiKey,
@@ -24,7 +35,10 @@ export default function PlatformApiPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [newLabel, setNewLabel] = useState('');
-  const [newScopes, setNewScopes] = useState<string[]>(['localisation:read', 'business-rules:read']);
+  const [newScopes, setNewScopes] = useState<string[]>([
+    'localisation:read',
+    'business-rules:read',
+  ]);
   const [newExpiry, setNewExpiry] = useState('');
   const [creating, setCreating] = useState(false);
   const [revealedKey, setRevealedKey] = useState<string | null>(null);
@@ -43,7 +57,9 @@ export default function PlatformApiPage() {
     }
   }, [companyId]);
 
-  useEffect(() => { loadKeys(); }, [loadKeys]);
+  useEffect(() => {
+    loadKeys();
+  }, [loadKeys]);
 
   const handleCreate = async () => {
     if (!companyId || !user?.id || !newLabel.trim()) return;
@@ -74,7 +90,7 @@ export default function PlatformApiPage() {
     if (!confirm('Revoke this API key? This cannot be undone.')) return;
     try {
       await revokeApiKey(keyId);
-      setKeys((prev) => prev.map((k) => k.id === keyId ? { ...k, isActive: false } : k));
+      setKeys((prev) => prev.map((k) => (k.id === keyId ? { ...k, isActive: false } : k)));
     } catch (e: any) {
       setError(e.message);
     }
@@ -95,7 +111,11 @@ export default function PlatformApiPage() {
 
   const formatDate = (iso: string | null) => {
     if (!iso) return '—';
-    return new Date(iso).toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' });
+    return new Date(iso).toLocaleDateString('en-AU', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
   };
 
   return (
@@ -104,11 +124,15 @@ export default function PlatformApiPage() {
         {/* Header */}
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h1 className="text-[1.375rem] font-800 tracking-tight" style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}>
+            <h1
+              className="text-[1.375rem] font-800 tracking-tight"
+              style={{ color: 'var(--foreground)', letterSpacing: '-0.02em' }}
+            >
               Platform API Keys
             </h1>
             <p className="text-[13px] mt-1" style={{ color: 'var(--muted-foreground)' }}>
-              Manage secure API keys for the Innovion Platform API — consumed by Workforce and partner applications
+              Manage secure API keys for the Innovion Platform API — consumed by Workforce and
+              partner applications
             </p>
           </div>
           {canManage && (
@@ -133,23 +157,36 @@ export default function PlatformApiPage() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {[
-              { method: 'GET', path: '/api/platform/localisation',   scope: 'localisation:read' },
-              { method: 'GET', path: '/api/platform/country-config',  scope: 'country-config:read' },
-              { method: 'GET', path: '/api/platform/business-rules',  scope: 'business-rules:read' },
-              { method: 'GET', path: '/api/platform/tenancy',         scope: 'tenancy:read' },
-              { method: 'GET', path: '/api/platform/partner-config',  scope: 'partner-config:read' },
-              { method: 'GET', path: '/api/platform/translations',    scope: 'translations:read' },
+              { method: 'GET', path: '/api/platform/localisation', scope: 'localisation:read' },
+              { method: 'GET', path: '/api/platform/country-config', scope: 'country-config:read' },
+              { method: 'GET', path: '/api/platform/business-rules', scope: 'business-rules:read' },
+              { method: 'GET', path: '/api/platform/tenancy', scope: 'tenancy:read' },
+              { method: 'GET', path: '/api/platform/partner-config', scope: 'partner-config:read' },
+              { method: 'GET', path: '/api/platform/translations', scope: 'translations:read' },
             ].map((ep) => (
-              <div key={ep.path} className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-mono" style={{ backgroundColor: 'var(--secondary)', border: '1px solid var(--border)' }}>
-                <span className="font-700 flex-shrink-0" style={{ color: 'var(--success)' }}>{ep.method}</span>
-                <span className="flex-1 truncate" style={{ color: 'var(--foreground)' }}>{ep.path}</span>
-                <span className="flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>{ep.scope}</span>
+              <div
+                key={ep.path}
+                className="flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-mono"
+                style={{ backgroundColor: 'var(--secondary)', border: '1px solid var(--border)' }}
+              >
+                <span className="font-700 flex-shrink-0" style={{ color: 'var(--success)' }}>
+                  {ep.method}
+                </span>
+                <span className="flex-1 truncate" style={{ color: 'var(--foreground)' }}>
+                  {ep.path}
+                </span>
+                <span className="flex-shrink-0" style={{ color: 'var(--muted-foreground)' }}>
+                  {ep.scope}
+                </span>
               </div>
             ))}
           </div>
           <p className="text-xs mt-3" style={{ color: 'var(--muted-foreground)' }}>
             All requests must include:{' '}
-            <code className="px-1.5 py-0.5 rounded text-xs font-mono" style={{ backgroundColor: 'var(--secondary)', color: 'var(--foreground)' }}>
+            <code
+              className="px-1.5 py-0.5 rounded text-xs font-mono"
+              style={{ backgroundColor: 'var(--secondary)', color: 'var(--foreground)' }}
+            >
               Authorization: Bearer &lt;api_key&gt;
             </code>
           </p>
@@ -157,7 +194,13 @@ export default function PlatformApiPage() {
 
         {/* Revealed Key Banner */}
         {revealedKey && (
-          <div className="card-elevated p-4 animate-slide-up" style={{ borderColor: 'rgba(245,158,11,0.3)', backgroundColor: 'rgba(245,158,11,0.06)' }}>
+          <div
+            className="card-elevated p-4 animate-slide-up"
+            style={{
+              borderColor: 'rgba(245,158,11,0.3)',
+              backgroundColor: 'rgba(245,158,11,0.06)',
+            }}
+          >
             <div className="flex items-center gap-2 mb-3">
               <AlertTriangle size={15} style={{ color: 'var(--warning)' }} />
               <p className="text-sm font-700" style={{ color: 'var(--warning)' }}>
@@ -165,14 +208,32 @@ export default function PlatformApiPage() {
               </p>
             </div>
             <div className="flex items-center gap-3 flex-wrap">
-              <code className="flex-1 min-w-0 px-3 py-2 rounded-lg text-sm font-mono break-all" style={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }}>
+              <code
+                className="flex-1 min-w-0 px-3 py-2 rounded-lg text-sm font-mono break-all"
+                style={{
+                  backgroundColor: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  color: 'var(--foreground)',
+                }}
+              >
                 {revealedKey}
               </code>
               <div className="flex gap-2 flex-shrink-0">
                 <button onClick={copyKey} className="btn-primary py-2 px-3 text-xs">
-                  {copiedKey ? <><Check size={13} /> Copied</> : <><Copy size={13} /> Copy</>}
+                  {copiedKey ? (
+                    <>
+                      <Check size={13} /> Copied
+                    </>
+                  ) : (
+                    <>
+                      <Copy size={13} /> Copy
+                    </>
+                  )}
                 </button>
-                <button onClick={() => setRevealedKey(null)} className="btn-secondary py-2 px-3 text-xs">
+                <button
+                  onClick={() => setRevealedKey(null)}
+                  className="btn-secondary py-2 px-3 text-xs"
+                >
                   Dismiss
                 </button>
               </div>
@@ -182,7 +243,14 @@ export default function PlatformApiPage() {
 
         {/* Error */}
         {error && (
-          <div className="flex items-center gap-3 p-4 rounded-lg text-sm" style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid rgba(239,68,68,0.2)' }}>
+          <div
+            className="flex items-center gap-3 p-4 rounded-lg text-sm"
+            style={{
+              backgroundColor: 'var(--danger-bg)',
+              color: 'var(--danger)',
+              border: '1px solid rgba(239,68,68,0.2)',
+            }}
+          >
             <AlertTriangle size={15} />
             {error}
           </div>
@@ -199,7 +267,12 @@ export default function PlatformApiPage() {
             </div>
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>Label</label>
+                <label
+                  className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                  style={{ fontSize: '11px' }}
+                >
+                  Label
+                </label>
                 <input
                   type="text"
                   value={newLabel}
@@ -210,10 +283,19 @@ export default function PlatformApiPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-600 text-muted-foreground mb-2 uppercase tracking-wide" style={{ fontSize: '11px' }}>Scopes</label>
+                <label
+                  className="block text-xs font-600 text-muted-foreground mb-2 uppercase tracking-wide"
+                  style={{ fontSize: '11px' }}
+                >
+                  Scopes
+                </label>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                   {AVAILABLE_SCOPES.map((s) => (
-                    <label key={s.value} className="flex items-center gap-2.5 text-sm cursor-pointer p-2.5 rounded-lg transition-colors hover:bg-secondary" style={{ border: '1px solid var(--border)' }}>
+                    <label
+                      key={s.value}
+                      className="flex items-center gap-2.5 text-sm cursor-pointer p-2.5 rounded-lg transition-colors hover:bg-secondary"
+                      style={{ border: '1px solid var(--border)' }}
+                    >
                       <input
                         type="checkbox"
                         checked={newScopes.includes(s.value)}
@@ -227,7 +309,10 @@ export default function PlatformApiPage() {
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                <label
+                  className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                  style={{ fontSize: '11px' }}
+                >
                   Expiry Date <span className="normal-case font-400">(optional)</span>
                 </label>
                 <input
@@ -246,7 +331,15 @@ export default function PlatformApiPage() {
                   className="btn-primary disabled:opacity-50"
                   aria-label="Create API key"
                 >
-                  {creating ? <><Loader2 size={14} className="animate-spin" /> Creating…</> : <><Key size={14} /> Create Key</>}
+                  {creating ? (
+                    <>
+                      <Loader2 size={14} className="animate-spin" /> Creating…
+                    </>
+                  ) : (
+                    <>
+                      <Key size={14} /> Create Key
+                    </>
+                  )}
                 </button>
                 <button onClick={() => setShowCreate(false)} className="btn-secondary">
                   Cancel
@@ -266,15 +359,38 @@ export default function PlatformApiPage() {
             <div className="empty-state">
               <Key size={40} className="empty-state-icon" />
               <p className="empty-state-title">No API keys yet</p>
-              <p className="empty-state-desc">{canManage ? 'Create one above to get started.' : 'Contact your administrator to create API keys.'}</p>
+              <p className="empty-state-desc">
+                {canManage
+                  ? 'Create one above to get started.'
+                  : 'Contact your administrator to create API keys.'}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
-                <thead style={{ backgroundColor: 'var(--secondary)', borderBottom: '1px solid var(--border)' }}>
+                <thead
+                  style={{
+                    backgroundColor: 'var(--secondary)',
+                    borderBottom: '1px solid var(--border)',
+                  }}
+                >
                   <tr>
-                    {['Label', 'Key Prefix', 'Scopes', 'Status', 'Last Used', 'Expires', ...(canManage ? [''] : [])].map((h) => (
-                      <th key={h} className="text-left px-4 py-3 text-xs font-600 uppercase tracking-wide" style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{h}</th>
+                    {[
+                      'Label',
+                      'Key Prefix',
+                      'Scopes',
+                      'Status',
+                      'Last Used',
+                      'Expires',
+                      ...(canManage ? [''] : []),
+                    ].map((h) => (
+                      <th
+                        key={h}
+                        className="text-left px-4 py-3 text-xs font-600 uppercase tracking-wide"
+                        style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}
+                      >
+                        {h}
+                      </th>
                     ))}
                   </tr>
                 </thead>
@@ -282,20 +398,35 @@ export default function PlatformApiPage() {
                   {keys.map((key) => (
                     <tr key={key.id} className="table-row">
                       <td className="px-4 py-3 font-600 text-foreground">{key.label}</td>
-                      <td className="px-4 py-3 font-mono text-xs" style={{ color: 'var(--muted-foreground)' }}>{key.keyPrefix}…</td>
+                      <td
+                        className="px-4 py-3 font-mono text-xs"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        {key.keyPrefix}…
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {key.scopes.map((s) => (
-                            <span key={s} className="px-2 py-0.5 rounded text-xs font-500" style={{ backgroundColor: 'rgba(37,99,235,0.08)', color: 'var(--accent)' }}>
+                            <span
+                              key={s}
+                              className="px-2 py-0.5 rounded text-xs font-500"
+                              style={{
+                                backgroundColor: 'rgba(37,99,235,0.08)',
+                                color: 'var(--accent)',
+                              }}
+                            >
                               {s}
                             </span>
                           ))}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-600"
+                        <span
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-600"
                           style={{
-                            backgroundColor: key.isActive ? 'var(--success-bg)' : 'var(--secondary)',
+                            backgroundColor: key.isActive
+                              ? 'var(--success-bg)'
+                              : 'var(--secondary)',
                             color: key.isActive ? 'var(--success)' : 'var(--muted-foreground)',
                           }}
                         >
@@ -303,8 +434,18 @@ export default function PlatformApiPage() {
                           {key.isActive ? 'Active' : 'Revoked'}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>{formatDate(key.lastUsedAt)}</td>
-                      <td className="px-4 py-3 text-sm" style={{ color: 'var(--muted-foreground)' }}>{formatDate(key.expiresAt)}</td>
+                      <td
+                        className="px-4 py-3 text-sm"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        {formatDate(key.lastUsedAt)}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-sm"
+                        style={{ color: 'var(--muted-foreground)' }}
+                      >
+                        {formatDate(key.expiresAt)}
+                      </td>
                       {canManage && (
                         <td className="px-4 py-3 text-right">
                           {key.isActive && (

@@ -22,18 +22,23 @@ export default function ComplianceAlertBanner() {
       }
       setLoaded(true);
     });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   const total = expired + expiring;
   if (loaded && total === 0) return null;
 
   return (
-    <div className="flex items-center gap-3 px-4 py-3 rounded-xl border" style={{ backgroundColor: 'var(--warning-bg)', borderColor: 'rgba(245,158,11,0.3)' }}>
+    <div
+      className="flex items-center gap-3 px-4 py-3 rounded-xl border"
+      style={{ backgroundColor: 'var(--warning-bg)', borderColor: 'rgba(245,158,11,0.3)' }}
+    >
       <AlertTriangle size={18} className="text-warning flex-shrink-0" />
       <div className="flex-1 min-w-0">
         <p className="text-sm font-600 text-foreground">
-          {loaded ? `${total} compliance issue${total !== 1 ? 's' : ''} require attention` : 'Checking compliance status...'}
+          {loaded
+            ? `${total} compliance issue${total !== 1 ? 's' : ''} require attention`
+            : 'Checking compliance status...'}
         </p>
         {loaded && (
           <p className="text-xs text-muted-foreground mt-0.5">
@@ -43,8 +48,12 @@ export default function ComplianceAlertBanner() {
           </p>
         )}
       </div>
-      <Link href="/compliance" className="flex items-center gap-1 text-xs font-600 text-warning hover:underline flex-shrink-0">
-        View all<ExternalLink size={12} />
+      <Link
+        href="/compliance"
+        className="flex items-center gap-1 text-xs font-600 text-warning hover:underline flex-shrink-0"
+      >
+        View all
+        <ExternalLink size={12} />
       </Link>
     </div>
   );

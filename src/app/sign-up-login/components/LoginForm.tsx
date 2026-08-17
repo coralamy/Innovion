@@ -51,7 +51,8 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       router.push('/dashboard');
       router.refresh();
     } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message || 'Invalid email or password. Please try again.';
+      const msg =
+        (error as { message?: string })?.message || 'Invalid email or password. Please try again.';
       setAuthError(msg);
     }
   };
@@ -62,7 +63,9 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       await resetPassword(data.resetEmail);
       setResetSent(true);
     } catch (error: unknown) {
-      setResetError((error as { message?: string })?.message || 'Failed to send reset email. Please try again.');
+      setResetError(
+        (error as { message?: string })?.message || 'Failed to send reset email. Please try again.'
+      );
     }
   };
 
@@ -72,7 +75,11 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         <div className="mb-8">
           <button
             type="button"
-            onClick={() => { setShowForgotPassword(false); setResetSent(false); setResetError(null); }}
+            onClick={() => {
+              setShowForgotPassword(false);
+              setResetSent(false);
+              setResetError(null);
+            }}
             className="text-sm font-600 text-accent hover:underline flex items-center gap-1 mb-4"
           >
             ← Back to sign in
@@ -85,7 +92,10 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
 
         {resetSent ? (
           <div className="text-center py-6">
-            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4" style={{ backgroundColor: 'var(--success-bg)' }}>
+            <div
+              className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ backgroundColor: 'var(--success-bg)' }}
+            >
               <CheckCircle2 size={28} className="text-success" />
             </div>
             <h3 className="text-lg font-700 text-foreground">Check your inbox</h3>
@@ -93,22 +103,37 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               We&apos;ve sent a password reset link to your email address.
             </p>
             <button
-              onClick={() => { setShowForgotPassword(false); setResetSent(false); }}
+              onClick={() => {
+                setShowForgotPassword(false);
+                setResetSent(false);
+              }}
               className="mt-6 text-sm font-600 text-accent hover:underline"
             >
               ← Back to sign in
             </button>
           </div>
         ) : (
-          <form onSubmit={handleResetSubmit(onResetSubmit)} className="space-y-5" noValidate suppressHydrationWarning>
+          <form
+            onSubmit={handleResetSubmit(onResetSubmit)}
+            className="space-y-5"
+            noValidate
+            suppressHydrationWarning
+          >
             {resetError && (
-              <div className="flex items-start gap-3 p-3 rounded-xl mb-5 border" style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}>
+              <div
+                className="flex items-start gap-3 p-3 rounded-xl mb-5 border"
+                style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}
+              >
                 <AlertCircle size={16} className="text-danger flex-shrink-0 mt-0.5" />
                 <p className="text-sm text-danger font-500">{resetError}</p>
               </div>
             )}
             <div>
-              <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="reset-email" suppressHydrationWarning>
+              <label
+                className="block text-sm font-600 text-foreground mb-1.5"
+                htmlFor="reset-email"
+                suppressHydrationWarning
+              >
                 Email address
               </label>
               <input
@@ -119,11 +144,16 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
                 placeholder="you@company.com.au"
                 {...registerReset('resetEmail', {
                   required: 'Email address is required',
-                  pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' },
+                  pattern: {
+                    value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                    message: 'Enter a valid email address',
+                  },
                 })}
               />
               {resetErrors.resetEmail && (
-                <p className="text-xs text-danger mt-1.5 font-500">{resetErrors.resetEmail.message}</p>
+                <p className="text-xs text-danger mt-1.5 font-500">
+                  {resetErrors.resetEmail.message}
+                </p>
               )}
             </div>
             <button
@@ -155,16 +185,28 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
       </div>
 
       {authError && (
-        <div className="flex items-start gap-3 p-3 rounded-xl mb-5 border" style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}>
+        <div
+          className="flex items-start gap-3 p-3 rounded-xl mb-5 border"
+          style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}
+        >
           <AlertCircle size={16} className="text-danger flex-shrink-0 mt-0.5" />
           <p className="text-sm text-danger font-500">{authError}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate suppressHydrationWarning>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-5"
+        noValidate
+        suppressHydrationWarning
+      >
         {/* Email */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="login-email" suppressHydrationWarning>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="login-email"
+            suppressHydrationWarning
+          >
             Email address
           </label>
           <div suppressHydrationWarning>
@@ -177,7 +219,10 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
               suppressHydrationWarning
               {...register('email', {
                 required: 'Email address is required',
-                pattern: { value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/, message: 'Enter a valid email address' },
+                pattern: {
+                  value: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+                  message: 'Enter a valid email address',
+                },
               })}
             />
           </div>
@@ -189,7 +234,11 @@ export default function LoginForm({ onSwitchToSignup }: LoginFormProps) {
         {/* Password */}
         <div suppressHydrationWarning>
           <div className="flex items-center justify-between mb-1.5" suppressHydrationWarning>
-            <label className="block text-sm font-600 text-foreground" htmlFor="login-password" suppressHydrationWarning>
+            <label
+              className="block text-sm font-600 text-foreground"
+              htmlFor="login-password"
+              suppressHydrationWarning
+            >
               Password
             </label>
             <button

@@ -16,17 +16,17 @@ const BASE_URL = process.env.BASE_URL ?? 'http://localhost:3000';
 const TIMEOUT_MS = 10_000;
 
 // ─── Colour helpers ───────────────────────────────────────────────────────────
-const GREEN  = '\x1b[32m';
-const RED    = '\x1b[31m';
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
-const CYAN   = '\x1b[36m';
-const BOLD   = '\x1b[1m';
-const RESET  = '\x1b[0m';
+const CYAN = '\x1b[36m';
+const BOLD = '\x1b[1m';
+const RESET = '\x1b[0m';
 
-const pass  = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
-const fail  = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
-const warn  = (msg: string) => console.log(`  ${YELLOW}⚠${RESET}  ${msg}`);
-const info  = (msg: string) => console.log(`  ${CYAN}ℹ${RESET}  ${msg}`);
+const pass = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
+const fail = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
+const warn = (msg: string) => console.log(`  ${YELLOW}⚠${RESET}  ${msg}`);
+const info = (msg: string) => console.log(`  ${CYAN}ℹ${RESET}  ${msg}`);
 const title = (msg: string) => console.log(`\n${BOLD}${msg}${RESET}`);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -40,10 +40,7 @@ interface TestResult {
 const results: TestResult[] = [];
 
 // ─── Core test runner ─────────────────────────────────────────────────────────
-async function test(
-  name: string,
-  fn: () => Promise<void>
-): Promise<void> {
+async function test(name: string, fn: () => Promise<void>): Promise<void> {
   const start = Date.now();
   try {
     await fn();
@@ -80,10 +77,7 @@ async function get(
   }
 }
 
-async function getJson<T = unknown>(
-  path: string,
-  expectedStatus = 200
-): Promise<T> {
+async function getJson<T = unknown>(path: string, expectedStatus = 200): Promise<T> {
   const res = await get(path, expectedStatus);
   const contentType = res.headers.get('content-type') ?? '';
   if (!contentType.includes('application/json')) {
@@ -98,16 +92,16 @@ async function runPageTests(): Promise<void> {
   title('1. Public Pages — HTTP 200 checks');
 
   const publicPages = [
-    ['Marketing home',         '/marketing'],
-    ['Pricing page',           '/marketing/pricing'],
-    ['Features page',          '/marketing/features'],
-    ['About page',             '/marketing/about'],
-    ['Contact page',           '/marketing/contact'],
-    ['Resources page',         '/marketing/resources'],
-    ['Industries page',        '/marketing/industries'],
-    ['Privacy policy',         '/marketing/privacy'],
-    ['Terms of service',       '/marketing/terms'],
-    ['Sign-up / Login',        '/sign-up-login'],
+    ['Marketing home', '/marketing'],
+    ['Pricing page', '/marketing/pricing'],
+    ['Features page', '/marketing/features'],
+    ['About page', '/marketing/about'],
+    ['Contact page', '/marketing/contact'],
+    ['Resources page', '/marketing/resources'],
+    ['Industries page', '/marketing/industries'],
+    ['Privacy policy', '/marketing/privacy'],
+    ['Terms of service', '/marketing/terms'],
+    ['Sign-up / Login', '/sign-up-login'],
   ] as const;
 
   for (const [name, path] of publicPages) {
@@ -127,7 +121,8 @@ async function runApiTests(): Promise<void> {
       '/api/dashboard/summary'
     );
     if (!data.data) throw new Error('Missing "data" key in response');
-    if (data.meta?.queryCount !== 6) throw new Error(`Expected queryCount=6, got ${data.meta?.queryCount}`);
+    if (data.meta?.queryCount !== 6)
+      throw new Error(`Expected queryCount=6, got ${data.meta?.queryCount}`);
   });
 
   await test('Dashboard summary includes rate-limit headers', async () => {
@@ -179,7 +174,9 @@ async function runRateLimitTests(): Promise<void> {
     const statuses = await Promise.all(requests);
     const has429 = statuses.includes(429);
     if (!has429) {
-      warn('Rate limiter did not return 429 — may be reset between requests or window not reached');
+      warn(
+        'Rate limiter did not return 429 — may be reset between requests or window not reached'
+      );
       // Non-fatal: in-memory store may have been cleared; log as warning not failure
     }
   });
@@ -219,7 +216,8 @@ async function runSecurityTests(): Promise<void> {
   await test('SQL injection attempt returns non-500 on public endpoint', async () => {
     const maliciousPath = "/api/dashboard/summary?id=1' OR '1'='1";
     const res = await fetch(`${BASE_URL}${maliciousPath}`, { redirect: 'manual' });
-    if (res.status === 500) throw new Error('SQL injection probe returned 500 — possible unhandled error');
+    if (res.status === 500)
+      throw new Error('SQL injection probe returned 500 — possible unhandled error');
   });
 
   await test('Path traversal attempt returns non-500', async () => {
@@ -252,7 +250,9 @@ async function runSupabaseConnectivityTest(): Promise<void> {
   await test('Supabase REST API reachable', async () => {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     if (!supabaseUrl) {
-      warn('Skipping Supabase connectivity — NEXT_PUBLIC_SUPABASE_URL not set in this environment');
+      warn(
+        'Skipping Supabase connectivity — NEXT_PUBLIC_SUPABASE_URL not set in this environment'
+      );
       return;
     }
     const controller = new AbortController();
@@ -274,13 +274,15 @@ async function runPerformanceTests(): Promise<void> {
   title('6. Performance Benchmarks');
 
   const THRESHOLDS: Record<string, number> = {
-    'Marketing home': 3_000,'Dashboard summary API': 1_200,'Sign-up / Login page':  3_000,
+    'Marketing home': 3_000,
+    'Dashboard summary API': 1_200,
+    'Sign-up / Login page': 3_000,
   };
 
   const benchmarks: Array<[string, string, number]> = [
-    ['Marketing home',        '/marketing',              THRESHOLDS['Marketing home']],
-    ['Dashboard summary API', '/api/dashboard/summary',  THRESHOLDS['Dashboard summary API']],
-    ['Sign-up / Login page',  '/sign-up-login',          THRESHOLDS['Sign-up / Login page']],
+    ['Marketing home', '/marketing', THRESHOLDS['Marketing home']],
+    ['Dashboard summary API', '/api/dashboard/summary', THRESHOLDS['Dashboard summary API']],
+    ['Sign-up / Login page', '/sign-up-login', THRESHOLDS['Sign-up / Login page']],
   ];
 
   for (const [name, path, threshold] of benchmarks) {
@@ -297,9 +299,13 @@ async function runPerformanceTests(): Promise<void> {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
-  console.log(`\n${BOLD}╔══════════════════════════════════════════════════╗${RESET}`);
+  console.log(
+    `\n${BOLD}╔══════════════════════════════════════════════════╗${RESET}`
+  );
   console.log(`${BOLD}║     Innovion — Production Smoke Test              ║${RESET}`);
-  console.log(`${BOLD}╚══════════════════════════════════════════════════╝${RESET}`);
+  console.log(
+    `${BOLD}╚══════════════════════════════════════════════════╝${RESET}`
+  );
   info(`Target: ${BOLD}${BASE_URL}${RESET}`);
   info(`Started: ${new Date().toISOString()}`);
 
@@ -311,15 +317,21 @@ async function main(): Promise<void> {
   await runPerformanceTests();
 
   // ─── Summary ───────────────────────────────────────────────────────────────
-  const passed  = results.filter((r) => r.passed).length;
-  const failed  = results.filter((r) => !r.passed).length;
-  const total   = results.length;
-  const avgMs   = Math.round(results.reduce((s, r) => s + r.durationMs, 0) / total);
+  const passed = results.filter((r) => r.passed).length;
+  const failed = results.filter((r) => !r.passed).length;
+  const total = results.length;
+  const avgMs = Math.round(results.reduce((s, r) => s + r.durationMs, 0) / total);
 
-  console.log(`\n${BOLD}══════════════════════════════════════════════════${RESET}`);
-  console.log(`${BOLD}  Results: ${GREEN}${passed} passed${RESET}  ${failed > 0 ? RED : ''}${failed} failed${RESET}  / ${total} total`);
+  console.log(
+    `\n${BOLD}══════════════════════════════════════════════════${RESET}`
+  );
+  console.log(
+    `${BOLD}  Results: ${GREEN}${passed} passed${RESET}  ${failed > 0 ? RED : ''}${failed} failed${RESET}  / ${total} total`
+  );
   console.log(`  Average response time: ${avgMs}ms`);
-  console.log(`${BOLD}══════════════════════════════════════════════════${RESET}\n`);
+  console.log(
+    `${BOLD}══════════════════════════════════════════════════${RESET}\n`
+  );
 
   if (failed > 0) {
     console.log(`${RED}${BOLD}FAILED TESTS:${RESET}`);
@@ -339,3 +351,12 @@ main().catch((err) => {
   console.error(`${RED}Smoke test runner crashed:${RESET}`, err);
   process.exit(1);
 });
+
+// This file is a standalone CLI script. The empty export makes it a MODULE
+// rather than a global script: without it TypeScript places every top-level
+// binding in the global scope, and the six scripts in this directory then
+// collide on shared names (GREEN, RED, results, title, BASE_URL, ...),
+// producing dozens of spurious TS2451/TS6200/TS2393 errors. That noise was a
+// significant reason 	ype-check was never green and was suppressed at build
+// time via next.config.mjs.
+export {};

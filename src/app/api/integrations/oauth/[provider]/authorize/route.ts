@@ -2,37 +2,77 @@
  * OAuth Authorization Initiation
  * GET /api/integrations/oauth/[provider]/authorize
  *
- * Generates the OAuth authorization URL for the given provider.
- * Stores PKCE code verifier and state in a server-side session cookie.
+ * Generates the OAuth authorization URL for the given provider and stores the
+ * PKCE code verifier and CSRF state in a signed, httpOnly cookie.
  *
- * All redirect URIs use innovion.app domain.
- * Never exposes client secrets or code verifiers to the browser.
+ * ---------------------------------------------------------------------------
+ * DEFECTS REMEDIATED
+ *
+ * 1. NO AUTHORISATION CHECK (P1 — privilege escalation across roles).
+ *    The route required only that the caller be *authenticated*. Any member of
+ *    a tenant — a 'viewer', the least-privileged role — could start an OAuth
+ *    connection on behalf of the whole organisation, and on completion bind
+ *    their own external accounting account to it. Connecting a provider is an
+ *    administrative act; RLS already restricts provider_integrations writes to
+ *    tenant admins, so a viewer's flow would also have failed silently at the
+ *    end. Now checked up front, against authoritative `user_roles`.
+ *
+ * 2. ARBITRARY TENANT SELECTION.
+ *    `.eq('user_id', user.id).limit(1).single()` picked whichever membership
+ *    the database happened to return first for a user who belongs to more than
+ *    one tenant, so the connection could be attached to a tenant the user was
+ *    not acting in. The tenant is now resolved deterministically and, where the
+ *    user has several, must be named explicitly with `?company_id=`.
+ *
+ * 3. UNSIGNED STATE. See src/lib/integrations/oauthState.ts.
+ *
+ * 4. OPEN REDIRECT via `?return_to=`. See `safeReturnTo`.
+ *
+ * 5. NO RATE LIMITING on a route that performs a database read and a crypto
+ *    operation per request.
+ *
+ * 6. `params` IS A PROMISE in Next.js 15 and was destructured synchronously.
+ * ---------------------------------------------------------------------------
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { getAdapter } from '@/lib/services/integrationFrameworkService';
+import {
+  newStateToken,
+  signState,
+  safeReturnTo,
+  OAUTH_STATE_MAX_AGE_MS,
+} from '@/lib/integrations/oauthState';
+import {
+  checkRateLimit,
+  getRequestIdentifier,
+  RATE_LIMIT_CONFIGS,
+  rateLimitExceededResponse,
+} from '@/lib/rateLimit';
+import { logger } from '@/lib/logger';
 // Register all provider adapters (Xero, etc.) before any adapter lookup
 import '@/lib/integrations/adapters';
 
-// Supported providers for Phase 1A
 const SUPPORTED_PROVIDERS = ['xero', 'microsoft', 'google', 'stripe', 'rhixo'];
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const { provider } = params;
+  const { provider } = await params;
 
   if (!SUPPORTED_PROVIDERS.includes(provider)) {
-    return NextResponse.json(
-      { error: `Provider '${provider}' is not supported` },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: `Provider '${provider}' is not supported` }, { status: 400 });
   }
 
-  // Authenticate the requesting user
+  const rl = checkRateLimit(
+    `oauth-authorize:${getRequestIdentifier(request)}`,
+    RATE_LIMIT_CONFIGS.auth
+  );
+  if (!rl.success) return rateLimitExceededResponse(rl);
+
   const cookieStore = await cookies();
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -41,56 +81,94 @@ export async function GET(
       cookies: {
         getAll: () => cookieStore.getAll(),
         setAll: (cookiesToSet) => {
-          cookiesToSet.forEach(({ name, value, options }) =>
-            cookieStore.set(name, value, options)
-          );
+          try {
+            cookiesToSet.forEach(({ name, value, options }) =>
+              cookieStore.set(name, value, options)
+            );
+          } catch {
+            // Read-only cookie context — the session is still valid for this request.
+          }
         },
       },
     }
   );
 
-  const { data: { user }, error: authError } = await supabase.auth.getUser();
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
   if (authError || !user) {
     return NextResponse.json({ error: 'Unauthorised' }, { status: 401 });
   }
 
-  // Resolve company ID from user profile
-  const { data: profile } = await supabase
-    .from('user_roles')
-    .select('company_id')
-    .eq('user_id', user.id)
-    .limit(1)
-    .single();
+  // ── Authoritative tenant + role ────────────────────────────────────────────
+  const requestedCompany = request.nextUrl.searchParams.get('company_id');
 
-  if (!profile?.company_id) {
-    return NextResponse.json({ error: 'No company associated with this user' }, { status: 400 });
+  const { data: memberships, error: membershipError } = await supabase
+    .from('user_roles')
+    .select('company_id, role')
+    .eq('user_id', user.id)
+    .not('company_id', 'is', null);
+
+  if (membershipError) {
+    logger.error('oauth/authorize', 'Failed to resolve tenant membership', {
+      userId: user.id,
+      error: membershipError.message,
+    });
+    return NextResponse.json({ error: 'Unable to resolve organisation' }, { status: 500 });
+  }
+
+  const admin = (memberships ?? []).filter((m) => m.role === 'admin');
+  if (admin.length === 0) {
+    return NextResponse.json(
+      { error: 'Only an organisation administrator may connect an integration' },
+      { status: 403 }
+    );
+  }
+
+  let companyId: string;
+  if (requestedCompany) {
+    const match = admin.find((m) => m.company_id === requestedCompany);
+    if (!match) {
+      return NextResponse.json(
+        { error: 'Only an organisation administrator may connect an integration' },
+        { status: 403 }
+      );
+    }
+    companyId = match.company_id as string;
+  } else if (admin.length === 1) {
+    companyId = admin[0].company_id as string;
+  } else {
+    return NextResponse.json(
+      {
+        error:
+          'You administer more than one organisation. Specify which one with ?company_id=<uuid>.',
+        code: 'COMPANY_AMBIGUOUS',
+        administeredCompanyIds: admin.map((m) => m.company_id),
+      },
+      { status: 400 }
+    );
   }
 
   const adapter = getAdapter(provider);
   if (!adapter) {
-    // Adapter not yet registered — return a pending state response
     return NextResponse.json(
       {
-        error: `Provider '${provider}' adapter is not yet registered. Phase 1B/1C implementation required.`,
+        error: `Provider '${provider}' adapter is not yet registered.`,
         phase: 'pending',
-        redirectUri: `https://innovion.app/api/integrations/oauth/${provider}/callback`,
       },
       { status: 501 }
     );
   }
 
-  const searchParams = request.nextUrl.searchParams;
-  const returnTo = searchParams.get('return_to') ?? '/settings/integrations';
-  const acquisitionSource = searchParams.get('acquisition_source') ?? 'direct';
+  const returnTo = safeReturnTo(request.nextUrl.searchParams.get('return_to'));
+  const acquisitionSource = request.nextUrl.searchParams.get('acquisition_source') ?? 'direct';
 
   try {
-    // Generate PKCE + state
-    const stateArray = new Uint8Array(32);
-    crypto.getRandomValues(stateArray);
-    const state = Array.from(stateArray, (b) => b.toString(16).padStart(2, '0')).join('');
+    const state = newStateToken();
 
     const { url, codeVerifier } = await adapter.buildAuthorizationUrl({
-      companyId: profile.company_id,
+      companyId,
       userId: user.id,
       state,
       codeVerifier: undefined,
@@ -98,12 +176,10 @@ export async function GET(
       returnTo,
     });
 
-    // Store OAuth state server-side in a secure, httpOnly cookie
-    // State is validated on callback to prevent CSRF
-    const oauthState = JSON.stringify({
+    const signed = signState({
       state,
       codeVerifier,
-      companyId: profile.company_id,
+      companyId,
       userId: user.id,
       provider,
       returnTo,
@@ -112,20 +188,17 @@ export async function GET(
     });
 
     const response = NextResponse.redirect(url);
-    response.cookies.set(`oauth_state_${provider}`, oauthState, {
+    response.cookies.set(`oauth_state_${provider}`, signed, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 600, // 10 minutes — OAuth flows should complete quickly
+      maxAge: Math.floor(OAUTH_STATE_MAX_AGE_MS / 1000),
       path: '/',
     });
 
     return response;
   } catch (err) {
-    console.error(`[OAuth Authorize] ${provider} error:`, err instanceof Error ? err.message : 'Unknown error');
-    return NextResponse.json(
-      { error: 'Failed to initiate OAuth flow' },
-      { status: 500 }
-    );
+    logger.error('oauth/authorize', 'Failed to initiate OAuth flow', { provider, companyId }, err);
+    return NextResponse.json({ error: 'Failed to initiate OAuth flow' }, { status: 500 });
   }
 }

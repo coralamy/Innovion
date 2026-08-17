@@ -96,7 +96,6 @@ export interface IntegrationEvent {
 // ── Service ───────────────────────────────────────────────────────────────────
 
 export const integrationFrameworkService = {
-
   // ── Connection status ───────────────────────────────────────────────────────
 
   /**
@@ -110,7 +109,9 @@ export const integrationFrameworkService = {
     const [integrationsResult, healthResult, externalOrgsResult] = await Promise.all([
       supabase
         .from('provider_integrations')
-        .select('provider_slug, status, is_enabled, reauth_required, connected_at, last_sync_at, last_sync_status')
+        .select(
+          'provider_slug, status, is_enabled, reauth_required, connected_at, last_sync_at, last_sync_status'
+        )
         .eq('company_id', companyId),
       supabase
         .from('integration_health')
@@ -157,7 +158,9 @@ export const integrationFrameworkService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('integration_connection_status')
-      .select('id, provider_slug, connection_state, reauth_required, external_user_id, external_user_email, external_tenant_id, scope_string, expires_at, created_at, updated_at')
+      .select(
+        'id, provider_slug, connection_state, reauth_required, external_user_id, external_user_email, external_tenant_id, scope_string, expires_at, created_at, updated_at'
+      )
       .eq('company_id', companyId)
       .eq('provider_slug', providerSlug)
       .is('revoked_at', null)
@@ -186,11 +189,7 @@ export const integrationFrameworkService = {
    * Read audit log entries for a company+provider.
    * Audit log is immutable — written server-side only.
    */
-  async getAuditLog(
-    companyId: string,
-    providerSlug: string,
-    limit = 50
-  ): Promise<AuditLogEntry[]> {
+  async getAuditLog(companyId: string, providerSlug: string, limit = 50): Promise<AuditLogEntry[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('integration_audit_log')
@@ -216,11 +215,7 @@ export const integrationFrameworkService = {
   /**
    * Get recent sync jobs for a company+provider.
    */
-  async getSyncJobs(
-    companyId: string,
-    providerSlug: string,
-    limit = 20
-  ): Promise<SyncJobRecord[]> {
+  async getSyncJobs(companyId: string, providerSlug: string, limit = 20): Promise<SyncJobRecord[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('integration_sync_jobs')
@@ -260,7 +255,9 @@ export const integrationFrameworkService = {
     const supabase = createClient();
     let query = supabase
       .from('integration_external_orgs')
-      .select('id, provider_slug, external_org_id, external_org_name, external_tenant_id, org_metadata, is_primary, connected_at')
+      .select(
+        'id, provider_slug, external_org_id, external_org_name, external_tenant_id, org_metadata, is_primary, connected_at'
+      )
       .eq('company_id', companyId);
 
     if (providerSlug) {
@@ -311,15 +308,13 @@ export const integrationFrameworkService = {
   /**
    * Get recent webhook events for a company+provider.
    */
-  async getWebhookEvents(
-    companyId: string,
-    providerSlug: string,
-    limit = 50
-  ) {
+  async getWebhookEvents(companyId: string, providerSlug: string, limit = 50) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('integration_webhook_events')
-      .select('id, provider_slug, external_event_id, event_type, status, received_at, processed_at, retry_count, last_error, signature_valid')
+      .select(
+        'id, provider_slug, external_event_id, event_type, status, received_at, processed_at, retry_count, last_error, signature_valid'
+      )
       .eq('company_id', companyId)
       .eq('provider_slug', providerSlug)
       .order('received_at', { ascending: false })
@@ -376,14 +371,13 @@ export const integrationFrameworkService = {
    * Get pending outbox events for a company (for monitoring/debugging).
    * Returns event metadata only — no credentials in payload.
    */
-  async getEventBusOutbox(
-    companyId: string,
-    limit = 50
-  ) {
+  async getEventBusOutbox(companyId: string, limit = 50) {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('integration_event_bus_outbox')
-      .select('id, event_type, provider_slug, status, attempt_count, schema_version, created_at, published_at, last_error')
+      .select(
+        'id, event_type, provider_slug, status, attempt_count, schema_version, created_at, published_at, last_error'
+      )
       .eq('company_id', companyId)
       .order('created_at', { ascending: false })
       .limit(limit);

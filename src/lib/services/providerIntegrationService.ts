@@ -17,10 +17,16 @@ import { createClient } from '@/lib/supabase/client';
 // ── Provider catalogue ────────────────────────────────────────────────────────
 
 export type ProviderCategory =
-  | 'accounting' |'microsoft' |'google' |'payments' |'web_digital' |'communications' |'identity' |'other';
+  | 'accounting'
+  | 'microsoft'
+  | 'google'
+  | 'payments'
+  | 'web_digital'
+  | 'communications'
+  | 'identity'
+  | 'other';
 
-export type IntegrationStatus =
-  | 'not_configured' | 'configured' | 'active' | 'error' | 'disabled';
+export type IntegrationStatus = 'not_configured' | 'configured' | 'active' | 'error' | 'disabled';
 
 export interface ProviderDefinition {
   slug: string;
@@ -44,10 +50,15 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     slug: 'xero',
     name: 'Xero',
     category: 'accounting',
-    description: 'Connect Xero to sync contacts, customers and organisation metadata. Designed for Xero App Store certification.',
+    description:
+      'Connect Xero to sync contacts, customers and organisation metadata. Designed for Xero App Store certification.',
     docsUrl: 'https://developer.xero.com/documentation/',
     displayFields: [
-      { key: 'organisationName', label: 'Connected Organisation', placeholder: 'Xero organisation name' },
+      {
+        key: 'organisationName',
+        label: 'Connected Organisation',
+        placeholder: 'Xero organisation name',
+      },
     ],
     secretFields: [],
     usesOAuth: true,
@@ -71,7 +82,8 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     slug: 'microsoft',
     name: 'Microsoft / Microsoft 365',
     category: 'microsoft',
-    description: 'Microsoft Entra ID authentication, multi-tenant SSO, and Microsoft 365 ecosystem foundation.',
+    description:
+      'Microsoft Entra ID authentication, multi-tenant SSO, and Microsoft 365 ecosystem foundation.',
     docsUrl: 'https://learn.microsoft.com/en-us/azure/active-directory/',
     displayFields: [
       { key: 'tenantName', label: 'Microsoft Tenant', placeholder: 'contoso.onmicrosoft.com' },
@@ -85,7 +97,8 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     slug: 'google',
     name: 'Google / Google Workspace',
     category: 'google',
-    description: 'Google Workspace SSO, Google Calendar, Google Drive, and Maps Platform integration.',
+    description:
+      'Google Workspace SSO, Google Calendar, Google Drive, and Maps Platform integration.',
     docsUrl: 'https://developers.google.com/',
     displayFields: [
       { key: 'workspaceDomain', label: 'Workspace Domain', placeholder: 'yourcompany.com' },
@@ -103,7 +116,11 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     docsUrl: 'https://stripe.com/docs',
     displayFields: [
       { key: 'publishableKey', label: 'Publishable Key', placeholder: 'pk_live_...' },
-      { key: 'webhookEndpoint', label: 'Webhook Endpoint', placeholder: 'https://innovion.app/api/integrations/webhooks/stripe' },
+      {
+        key: 'webhookEndpoint',
+        label: 'Webhook Endpoint',
+        placeholder: 'https://innovion.app/api/integrations/webhooks/stripe',
+      },
     ],
     secretFields: [
       { key: 'secretKey', label: 'Secret Key', placeholder: 'sk_live_...' },
@@ -116,15 +133,14 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     slug: 'rhixo',
     name: 'RHIXO',
     category: 'web_digital',
-    description: 'RHIXO web and digital services integration for domain, hosting and digital presence management.',
+    description:
+      'RHIXO web and digital services integration for domain, hosting and digital presence management.',
     docsUrl: 'https://rhixo.com/',
     displayFields: [
       { key: 'accountId', label: 'Account ID', placeholder: 'RHIXO account identifier' },
       { key: 'primaryDomain', label: 'Primary Domain', placeholder: 'yourcompany.com' },
     ],
-    secretFields: [
-      { key: 'apiKey', label: 'API Key', placeholder: 'RHIXO API Key' },
-    ],
+    secretFields: [{ key: 'apiKey', label: 'API Key', placeholder: 'RHIXO API Key' }],
   },
 
   // ── Communications ────────────────────────────────────────────────────────
@@ -135,12 +151,14 @@ export const PROVIDER_CATALOGUE: ProviderDefinition[] = [
     description: 'SMS, voice, and WhatsApp messaging for notifications and alerts.',
     docsUrl: 'https://www.twilio.com/docs',
     displayFields: [
-      { key: 'accountSid', label: 'Account SID', placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+      {
+        key: 'accountSid',
+        label: 'Account SID',
+        placeholder: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
+      },
       { key: 'fromNumber', label: 'From Number', placeholder: '+61400000000' },
     ],
-    secretFields: [
-      { key: 'authToken', label: 'Auth Token', placeholder: 'Twilio Auth Token' },
-    ],
+    secretFields: [{ key: 'authToken', label: 'Auth Token', placeholder: 'Twilio Auth Token' }],
   },
 ];
 
@@ -175,18 +193,18 @@ export interface UpsertIntegrationPayload {
 
 function mapRow(row: Record<string, unknown>): ProviderIntegration {
   return {
-    id:            row.id as string,
-    companyId:     row.company_id as string,
-    providerSlug:  row.provider_slug as string,
-    providerName:  row.provider_name as string,
-    category:      row.category as ProviderCategory,
-    status:        row.status as IntegrationStatus,
+    id: row.id as string,
+    companyId: row.company_id as string,
+    providerSlug: row.provider_slug as string,
+    providerName: row.provider_name as string,
+    category: row.category as ProviderCategory,
+    status: row.status as IntegrationStatus,
     displayConfig: (row.display_config as Record<string, string>) ?? {},
-    isEnabled:     row.is_enabled as boolean,
-    lastTestedAt:  row.last_tested_at as string | null,
-    lastError:     row.last_error as string | null,
-    createdAt:     row.created_at as string,
-    updatedAt:     row.updated_at as string,
+    isEnabled: row.is_enabled as boolean,
+    lastTestedAt: row.last_tested_at as string | null,
+    lastError: row.last_error as string | null,
+    createdAt: row.created_at as string,
+    updatedAt: row.updated_at as string,
   };
 }
 
@@ -196,7 +214,9 @@ export const providerIntegrationService = {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('provider_integrations')
-      .select('id, company_id, provider_slug, provider_name, category, status, display_config, is_enabled, last_tested_at, last_error, created_at, updated_at')
+      .select(
+        'id, company_id, provider_slug, provider_name, category, status, display_config, is_enabled, last_tested_at, last_error, created_at, updated_at'
+      )
       .eq('company_id', companyId)
       .order('provider_name');
     if (error) throw error;
@@ -216,21 +236,22 @@ export const providerIntegrationService = {
     let encryptedConfig: string | null = null;
     const hasSecrets = Object.values(payload.secretConfig).some((v) => v && v.trim() !== '');
     if (hasSecrets) {
-      const { data: encData, error: encError } = await supabase
-        .rpc('encrypt_provider_config', { plain_json: payload.secretConfig });
+      const { data: encData, error: encError } = await supabase.rpc('encrypt_provider_config', {
+        plain_json: payload.secretConfig,
+      });
       if (!encError && encData) {
         encryptedConfig = encData as string;
       }
     }
 
     const upsertPayload: Record<string, unknown> = {
-      company_id:    companyId,
+      company_id: companyId,
       provider_slug: payload.providerSlug,
       provider_name: payload.providerName,
-      category:      payload.category,
+      category: payload.category,
       display_config: payload.displayConfig,
-      is_enabled:    payload.isEnabled,
-      status:        payload.isEnabled ? 'configured' : 'not_configured',
+      is_enabled: payload.isEnabled,
+      status: payload.isEnabled ? 'configured' : 'not_configured',
     };
 
     if (encryptedConfig) {
@@ -243,7 +264,9 @@ export const providerIntegrationService = {
     const { data, error } = await supabase
       .from('provider_integrations')
       .upsert(upsertPayload, { onConflict: 'company_id,provider_slug' })
-      .select('id, company_id, provider_slug, provider_name, category, status, display_config, is_enabled, last_tested_at, last_error, created_at, updated_at')
+      .select(
+        'id, company_id, provider_slug, provider_name, category, status, display_config, is_enabled, last_tested_at, last_error, created_at, updated_at'
+      )
       .single();
     if (error) throw error;
     return mapRow(data as Record<string, unknown>);

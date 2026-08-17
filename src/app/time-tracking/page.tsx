@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import AppLayout from '@/components/AppLayout';
+import PlannedAction from '@/components/ui/PlannedAction';
 import {
   Clock,
   Play,
@@ -78,9 +79,16 @@ export default function TimeTrackingPage() {
 
   useEffect(() => {
     setNow(new Date());
-    setTodayLabel(new Date().toLocaleDateString('en-AU', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }));
+    setTodayLabel(
+      new Date().toLocaleDateString('en-AU', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+      })
+    );
     loadAll();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId]);
 
   const loadAll = async () => {
@@ -112,7 +120,11 @@ export default function TimeTrackingPage() {
         }));
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to load data. Please check your connection and try again.');
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Failed to load data. Please check your connection and try again.'
+      );
     } finally {
       setLoading(false);
       setDataLoading(false);
@@ -138,7 +150,13 @@ export default function TimeTrackingPage() {
   const handleContractorChange = (id: string) => {
     const c = contractors.find((x) => x.id === id);
     if (!c) return;
-    setSession((s) => ({ ...s, contractorId: id, contractorName: c.name, initials: c.initials, color: c.color }));
+    setSession((s) => ({
+      ...s,
+      contractorId: id,
+      contractorName: c.name,
+      initials: c.initials,
+      color: c.color,
+    }));
   };
 
   const handleJobChange = (title: string) => {
@@ -148,7 +166,13 @@ export default function TimeTrackingPage() {
 
   const handleClockIn = () => {
     const t = new Date();
-    setSession((s) => ({ ...s, clockInTime: t, status: 'clocked-in', totalBreakMs: 0, breakStartTime: null }));
+    setSession((s) => ({
+      ...s,
+      clockInTime: t,
+      status: 'clocked-in',
+      totalBreakMs: 0,
+      breakStartTime: null,
+    }));
     setElapsed(0);
     setBreakElapsed(0);
   };
@@ -161,22 +185,56 @@ export default function TimeTrackingPage() {
 
   const handleEndBreak = () => {
     const addedBreak = session.breakStartTime ? Date.now() - session.breakStartTime.getTime() : 0;
-    setSession((s) => ({ ...s, status: 'clocked-in', breakStartTime: null, totalBreakMs: s.totalBreakMs + addedBreak }));
+    setSession((s) => ({
+      ...s,
+      status: 'clocked-in',
+      breakStartTime: null,
+      totalBreakMs: s.totalBreakMs + addedBreak,
+    }));
     setBreakElapsed(0);
   };
 
   const handleClockOut = async () => {
     if (!session.clockInTime) return;
     const clockOut = new Date();
-    const totalBreak = session.status === 'on-break' && session.breakStartTime
-      ? session.totalBreakMs + (Date.now() - session.breakStartTime.getTime())
-      : session.totalBreakMs;
+    const totalBreak =
+      session.status === 'on-break' && session.breakStartTime
+        ? session.totalBreakMs + (Date.now() - session.breakStartTime.getTime())
+        : session.totalBreakMs;
     const workMs = clockOut.getTime() - session.clockInTime.getTime() - totalBreak;
     const totalHours = Math.round((workMs / 3600000) * 100) / 100;
     const breakMinutes = Math.round(totalBreak / 60000);
 
+    /**
+     * DEFECT 1 REMEDIATED (P0 — silent loss of every recorded shift):
+     *   `timeEntryService.create(newEntry)` was called with NO companyId, and
+     *   the service falls back to `company_id: null`. The RLS INSERT policy on
+     *   time_entries requires `company_id = get_my_company_id()`, so the insert
+     *   was refused for every user; after migration 20260817004000 made
+     *   company_id NOT NULL it is refused by the schema as well.
+     *
+     *   The failure was then CONCEALED: on a null result the page pushed
+     *   `{ ...newEntry, id: `te${Date.now()}` }` into local state, so the shift
+     *   appeared in the list, with an id, exactly as though it had saved. A
+     *   contractor clocked out, saw their hours recorded, and nothing was
+     *   written. The record was gone on the next page load.
+     *
+     * DEFECT 2 REMEDIATED: `date: 'Today'` stored the literal string "Today" in
+     *   `time_entries.entry_date` for every entry ever created. The list filter
+     *   `e.date === 'Today'` then appeared to work while actually matching
+     *   every row regardless of age, and timesheet approval passed the same
+     *   string into `contractor_invoices.work_date`, so invoices were dated
+     *   "Today". Now an ISO date.
+     *
+     * DEFECT 3 REMEDIATED: neither `contractor_id` nor `hourly_rate` was
+     *   recorded, though both columns exist. The rate is stamped from the
+     *   contractor record at clock-out so historical timesheets keep the rate
+     *   that applied when the work was done.
+     */
+    const contractor = contractors.find((c) => c.id === session.contractorId) ?? null;
+
     const newEntry: Omit<TimeEntry, 'id'> = {
-      date: 'Today',
+      date: new Date().toISOString().split('T')[0],
       contractor: session.contractorName,
       initials: session.initials,
       color: session.color,
@@ -187,41 +245,77 @@ export default function TimeTrackingPage() {
       breakMinutes,
       totalHours,
       status: 'completed',
+      contractorId: session.contractorId || null,
+      hourlyRate: contractor?.hourlyRate ?? null,
     };
+
+    if (!companyId) {
+      setError('Your account is not linked to an organisation, so this shift cannot be saved.');
+      return;
+    }
 
     setSaving(true);
     try {
-      const saved = await timeEntryService.create(newEntry);
-      if (saved) {
-        setEntries((prev) => [saved, ...prev]);
-      } else {
-        setEntries((prev) => [{ ...newEntry, id: `te${Date.now()}` }, ...prev]);
+      const saved = await timeEntryService.create(newEntry, companyId);
+      if (!saved) {
+        // Report the failure. Never fabricate a saved record.
+        setError(
+          'This shift could not be saved. Your clock-in is still running — please try clocking out again.'
+        );
+        return;
       }
+      setEntries((prev) => [saved, ...prev]);
+      setError(null);
     } catch {
-      setEntries((prev) => [{ ...newEntry, id: `te${Date.now()}` }, ...prev]);
+      setError(
+        'This shift could not be saved. Your clock-in is still running — please try clocking out again.'
+      );
+      return;
     } finally {
       setSaving(false);
     }
 
-    setSession((s) => ({ ...s, status: 'idle', clockInTime: null, breakStartTime: null, totalBreakMs: 0 }));
+    // The session is only cleared once the entry is genuinely persisted, so a
+    // failed save leaves the shift running rather than discarding it.
+    setSession((s) => ({
+      ...s,
+      status: 'idle',
+      clockInTime: null,
+      breakStartTime: null,
+      totalBreakMs: 0,
+    }));
     setElapsed(0);
     setBreakElapsed(0);
   };
 
-  const todayEntries = entries.filter((e) => e.date === 'Today');
+  // Compared against a real ISO date. The previous `e.date === 'Today'` only
+  // ever matched because every entry was literally dated "Today".
+  const todayIso = new Date().toISOString().split('T')[0];
+  const todayEntries = entries.filter((e) => e.date === todayIso);
   const todayHours = todayEntries.reduce((sum, e) => sum + (e.totalHours ?? 0), 0);
   const activeCount = session.status !== 'idle' ? 1 : 0;
   const avgHours = todayEntries.length > 0 ? (todayHours / todayEntries.length).toFixed(1) : '0.0';
 
-  const filteredEntries = filterDate === 'all' ? entries : entries.filter((e) => e.date === filterDate);
+  const filteredEntries =
+    filterDate === 'all' ? entries : entries.filter((e) => e.date === filterDate);
 
   const PAGE_SIZE = 15;
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(filteredEntries.length / PAGE_SIZE));
   const paginatedEntries = filteredEntries.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
-  const statusColor = session.status === 'clocked-in' ? 'var(--success)' : session.status === 'on-break' ? 'var(--warning)' : 'var(--muted-foreground)';
-  const statusLabel = session.status === 'clocked-in' ? 'Clocked In' : session.status === 'on-break' ? 'On Break' : 'Not Clocked In';
+  const statusColor =
+    session.status === 'clocked-in'
+      ? 'var(--success)'
+      : session.status === 'on-break'
+        ? 'var(--warning)'
+        : 'var(--muted-foreground)';
+  const statusLabel =
+    session.status === 'clocked-in'
+      ? 'Clocked In'
+      : session.status === 'on-break'
+        ? 'On Break'
+        : 'Not Clocked In';
 
   return (
     <AppLayout currentPath="/time-tracking">
@@ -233,14 +327,13 @@ export default function TimeTrackingPage() {
             <p className="page-header-subtitle">{todayLabel}</p>
           </div>
           {canManage && (
-            <button
-              suppressHydrationWarning
+            <PlannedAction
               className="btn-primary"
-              aria-label="Add manual time entry"
+              title="Manual time entry is not available yet — time is captured by clocking in and out."
             >
               <Plus size={15} />
               Manual Entry
-            </button>
+            </PlannedAction>
           )}
         </div>
 
@@ -263,10 +356,25 @@ export default function TimeTrackingPage() {
         {/* Summary stats */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Hours Logged Today', value: todayHours.toFixed(1) + 'h', icon: Clock, color: 'var(--accent)' },
+            {
+              label: 'Hours Logged Today',
+              value: todayHours.toFixed(1) + 'h',
+              icon: Clock,
+              color: 'var(--accent)',
+            },
             { label: 'Active Now', value: activeCount, icon: Play, color: 'var(--success)' },
-            { label: 'Entries Today', value: todayEntries.length + (activeCount > 0 ? 1 : 0), icon: Calendar, color: 'var(--info)' },
-            { label: 'Avg Hours / Entry', value: avgHours + 'h', icon: TrendingUp, color: 'var(--warning)' },
+            {
+              label: 'Entries Today',
+              value: todayEntries.length + (activeCount > 0 ? 1 : 0),
+              icon: Calendar,
+              color: 'var(--info)',
+            },
+            {
+              label: 'Avg Hours / Entry',
+              value: avgHours + 'h',
+              icon: TrendingUp,
+              color: 'var(--warning)',
+            },
           ].map((s) => (
             <div key={s.label} className="card-elevated p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg" style={{ backgroundColor: `${s.color}18` }}>
@@ -289,11 +397,19 @@ export default function TimeTrackingPage() {
                 <span
                   className="status-badge"
                   style={{
-                    backgroundColor: session.status === 'clocked-in' ? 'var(--success-bg)' : session.status === 'on-break' ? 'var(--warning-bg)' : 'var(--secondary)',
+                    backgroundColor:
+                      session.status === 'clocked-in'
+                        ? 'var(--success-bg)'
+                        : session.status === 'on-break'
+                          ? 'var(--warning-bg)'
+                          : 'var(--secondary)',
                     color: statusColor,
                   }}
                 >
-                  <span className="w-1.5 h-1.5 rounded-full mr-1.5 inline-block" style={{ backgroundColor: statusColor }} />
+                  <span
+                    className="w-1.5 h-1.5 rounded-full mr-1.5 inline-block"
+                    style={{ backgroundColor: statusColor }}
+                  />
                   {statusLabel}
                 </span>
               </div>
@@ -306,7 +422,12 @@ export default function TimeTrackingPage() {
                 <>
                   {/* Contractor selector */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-600 text-muted-foreground uppercase tracking-wide" style={{ fontSize: '10px' }}>Contractor</label>
+                    <label
+                      className="text-xs font-600 text-muted-foreground uppercase tracking-wide"
+                      style={{ fontSize: '10px' }}
+                    >
+                      Contractor
+                    </label>
                     <div className="relative">
                       <select
                         suppressHydrationWarning
@@ -320,17 +441,27 @@ export default function TimeTrackingPage() {
                           <option value="">No contractors found</option>
                         ) : (
                           contractors.map((c) => (
-                            <option key={c.id} value={c.id}>{c.name}</option>
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
                           ))
                         )}
                       </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <ChevronDown
+                        size={14}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                     </div>
                   </div>
 
                   {/* Job selector */}
                   <div className="space-y-1.5">
-                    <label className="text-xs font-600 text-muted-foreground uppercase tracking-wide" style={{ fontSize: '10px' }}>Job / Task</label>
+                    <label
+                      className="text-xs font-600 text-muted-foreground uppercase tracking-wide"
+                      style={{ fontSize: '10px' }}
+                    >
+                      Job / Task
+                    </label>
                     <div className="relative">
                       <select
                         suppressHydrationWarning
@@ -344,11 +475,16 @@ export default function TimeTrackingPage() {
                           <option value="">No jobs found</option>
                         ) : (
                           jobs.map((j) => (
-                            <option key={j.id} value={j.title}>{j.title}</option>
+                            <option key={j.id} value={j.title}>
+                              {j.title}
+                            </option>
                           ))
                         )}
                       </select>
-                      <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <ChevronDown
+                        size={14}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                     </div>
                     {session.site && (
                       <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
@@ -363,16 +499,27 @@ export default function TimeTrackingPage() {
               {/* Live timer */}
               <div
                 className="rounded-xl p-5 text-center"
-                style={{ backgroundColor: session.status !== 'idle' ? `${statusColor}12` : 'var(--secondary)' }}
+                style={{
+                  backgroundColor:
+                    session.status !== 'idle' ? `${statusColor}12` : 'var(--secondary)',
+                }}
               >
-                <p className="text-xs font-600 uppercase tracking-widest text-muted-foreground mb-2" style={{ fontSize: '10px' }}>
+                <p
+                  className="text-xs font-600 uppercase tracking-widest text-muted-foreground mb-2"
+                  style={{ fontSize: '10px' }}
+                >
                   {session.status === 'on-break' ? 'Break Duration' : 'Work Duration'}
                 </p>
                 <p
                   className="text-4xl font-700 font-tabular tracking-tight"
-                  style={{ color: session.status !== 'idle' ? statusColor : 'var(--muted-foreground)', fontFamily: 'JetBrains Mono, monospace' }}
+                  style={{
+                    color: session.status !== 'idle' ? statusColor : 'var(--muted-foreground)',
+                    fontFamily: 'JetBrains Mono, monospace',
+                  }}
                 >
-                  {session.status === 'on-break' ? formatDuration(breakElapsed) : formatDuration(elapsed)}
+                  {session.status === 'on-break'
+                    ? formatDuration(breakElapsed)
+                    : formatDuration(elapsed)}
                 </p>
                 {session.status === 'clocked-in' && session.totalBreakMs > 0 && (
                   <p className="text-xs text-muted-foreground mt-2">
@@ -453,34 +600,58 @@ export default function TimeTrackingPage() {
               {loading ? (
                 <p className="text-xs text-muted-foreground py-3 text-center">Loading...</p>
               ) : todayEntries.length === 0 && session.status === 'idle' ? (
-                <p className="text-xs text-muted-foreground py-3 text-center">No entries logged today</p>
+                <p className="text-xs text-muted-foreground py-3 text-center">
+                  No entries logged today
+                </p>
               ) : (
                 <div className="space-y-2">
                   {todayEntries.map((e) => (
-                    <div key={e.id} className="flex items-center gap-2 py-2 border-b last:border-0" style={{ borderColor: 'var(--border)' }}>
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0" style={{ backgroundColor: e.color }}>
+                    <div
+                      key={e.id}
+                      className="flex items-center gap-2 py-2 border-b last:border-0"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0"
+                        style={{ backgroundColor: e.color }}
+                      >
                         {e.initials}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-600 text-foreground truncate">{e.contractor}</p>
-                        <p className="text-xs text-muted-foreground truncate">{e.clockIn} – {e.clockOut}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {e.clockIn} – {e.clockOut}
+                        </p>
                       </div>
                       <div className="text-right flex-shrink-0">
-                        <p className="text-sm font-700 text-foreground font-tabular">{e.totalHours}h</p>
-                        {e.breakMinutes > 0 && <p className="text-xs text-muted-foreground">{e.breakMinutes}m break</p>}
+                        <p className="text-sm font-700 text-foreground font-tabular">
+                          {e.totalHours}h
+                        </p>
+                        {e.breakMinutes > 0 && (
+                          <p className="text-xs text-muted-foreground">{e.breakMinutes}m break</p>
+                        )}
                       </div>
                     </div>
                   ))}
                   {session.status !== 'idle' && (
                     <div className="flex items-center gap-2 py-2">
-                      <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0" style={{ backgroundColor: session.color }}>
+                      <div
+                        className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0"
+                        style={{ backgroundColor: session.color }}
+                      >
                         {session.initials}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs font-600 text-foreground truncate">{session.contractorName}</p>
-                        <p className="text-xs" style={{ color: statusColor }}>{statusLabel}</p>
+                        <p className="text-xs font-600 text-foreground truncate">
+                          {session.contractorName}
+                        </p>
+                        <p className="text-xs" style={{ color: statusColor }}>
+                          {statusLabel}
+                        </p>
                       </div>
-                      <p className="text-sm font-700 font-tabular" style={{ color: statusColor }}>{formatDuration(elapsed)}</p>
+                      <p className="text-sm font-700 font-tabular" style={{ color: statusColor }}>
+                        {formatDuration(elapsed)}
+                      </p>
                     </div>
                   )}
                 </div>
@@ -491,7 +662,10 @@ export default function TimeTrackingPage() {
           {/* Daily timesheet */}
           <div className="xl:col-span-3">
             <div className="card-elevated overflow-hidden">
-              <div className="p-4 border-b flex items-center justify-between flex-wrap gap-3" style={{ borderColor: 'var(--border)' }}>
+              <div
+                className="p-4 border-b flex items-center justify-between flex-wrap gap-3"
+                style={{ borderColor: 'var(--border)' }}
+              >
                 <h2 className="text-base font-700 text-foreground">Daily Timesheets</h2>
                 <div className="flex items-center gap-2">
                   <select
@@ -509,7 +683,10 @@ export default function TimeTrackingPage() {
               </div>
 
               {/* Table header */}
-              <div className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-600 uppercase tracking-wide text-muted-foreground" style={{ backgroundColor: 'var(--secondary)', fontSize: '10px' }}>
+              <div
+                className="hidden md:grid grid-cols-12 gap-2 px-4 py-2 text-xs font-600 uppercase tracking-wide text-muted-foreground"
+                style={{ backgroundColor: 'var(--secondary)', fontSize: '10px' }}
+              >
                 <div className="col-span-3">Contractor</div>
                 <div className="col-span-3">Job</div>
                 <div className="col-span-2 text-center">Clock In</div>
@@ -520,18 +697,27 @@ export default function TimeTrackingPage() {
 
               {loading ? (
                 <div className="py-16 text-center">
-                  <Clock size={36} className="mx-auto text-muted-foreground mb-3 opacity-30 animate-pulse" />
+                  <Clock
+                    size={36}
+                    className="mx-auto text-muted-foreground mb-3 opacity-30 animate-pulse"
+                  />
                   <p className="text-sm text-muted-foreground">Loading timesheets...</p>
                 </div>
               ) : (
                 <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                   {paginatedEntries.map((entry) => (
-                    <div key={entry.id} className="px-4 py-3 hover:bg-secondary/40 transition-colors">
+                    <div
+                      key={entry.id}
+                      className="px-4 py-3 hover:bg-secondary/40 transition-colors"
+                    >
                       {/* Mobile layout */}
                       <div className="md:hidden space-y-2">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white" style={{ backgroundColor: entry.color }}>
+                            <div
+                              className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white"
+                              style={{ backgroundColor: entry.color }}
+                            >
                               {entry.initials}
                             </div>
                             <div>
@@ -540,26 +726,43 @@ export default function TimeTrackingPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-base font-700 text-foreground font-tabular">{entry.totalHours}h</p>
+                            <p className="text-base font-700 text-foreground font-tabular">
+                              {entry.totalHours}h
+                            </p>
                             <StatusChip status={entry.status} />
                           </div>
                         </div>
                         <p className="text-xs text-muted-foreground truncate">{entry.job}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>In: <span className="text-foreground font-600">{entry.clockIn}</span></span>
-                          <span>Out: <span className="text-foreground font-600">{entry.clockOut ?? '—'}</span></span>
-                          <span>Break: <span className="text-foreground font-600">{entry.breakMinutes}m</span></span>
+                          <span>
+                            In: <span className="text-foreground font-600">{entry.clockIn}</span>
+                          </span>
+                          <span>
+                            Out:{' '}
+                            <span className="text-foreground font-600">
+                              {entry.clockOut ?? '—'}
+                            </span>
+                          </span>
+                          <span>
+                            Break:{' '}
+                            <span className="text-foreground font-600">{entry.breakMinutes}m</span>
+                          </span>
                         </div>
                       </div>
 
                       {/* Desktop layout */}
                       <div className="hidden md:grid grid-cols-12 gap-2 items-center">
                         <div className="col-span-3 flex items-center gap-2 min-w-0">
-                          <div className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0" style={{ backgroundColor: entry.color }}>
+                          <div
+                            className="w-7 h-7 rounded-full flex items-center justify-center text-xs font-700 text-white flex-shrink-0"
+                            style={{ backgroundColor: entry.color }}
+                          >
                             {entry.initials}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-600 text-foreground truncate">{entry.contractor}</p>
+                            <p className="text-sm font-600 text-foreground truncate">
+                              {entry.contractor}
+                            </p>
                             <p className="text-xs text-muted-foreground">{entry.date}</p>
                           </div>
                         </div>
@@ -568,16 +771,24 @@ export default function TimeTrackingPage() {
                           <p className="text-xs text-muted-foreground truncate">{entry.site}</p>
                         </div>
                         <div className="col-span-2 text-center">
-                          <span className="text-sm font-600 text-foreground font-tabular">{entry.clockIn}</span>
+                          <span className="text-sm font-600 text-foreground font-tabular">
+                            {entry.clockIn}
+                          </span>
                         </div>
                         <div className="col-span-2 text-center">
-                          <span className="text-sm font-600 text-foreground font-tabular">{entry.clockOut ?? '—'}</span>
+                          <span className="text-sm font-600 text-foreground font-tabular">
+                            {entry.clockOut ?? '—'}
+                          </span>
                         </div>
                         <div className="col-span-1 text-center">
-                          <span className="text-sm text-muted-foreground font-tabular">{entry.breakMinutes}m</span>
+                          <span className="text-sm text-muted-foreground font-tabular">
+                            {entry.breakMinutes}m
+                          </span>
                         </div>
                         <div className="col-span-1 text-right">
-                          <span className="text-sm font-700 text-foreground font-tabular">{entry.totalHours}h</span>
+                          <span className="text-sm font-700 text-foreground font-tabular">
+                            {entry.totalHours}h
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -591,20 +802,68 @@ export default function TimeTrackingPage() {
                   )}
                   {/* Pagination */}
                   {totalPages > 1 && (
-                    <div className="flex items-center justify-between px-4 py-3 border-t" style={{ borderColor: 'var(--border)' }}>
-                      <p className="text-xs text-muted-foreground">Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filteredEntries.length)} of {filteredEntries.length}</p>
+                    <div
+                      className="flex items-center justify-between px-4 py-3 border-t"
+                      style={{ borderColor: 'var(--border)' }}
+                    >
+                      <p className="text-xs text-muted-foreground">
+                        Showing {(page - 1) * PAGE_SIZE + 1}–
+                        {Math.min(page * PAGE_SIZE, filteredEntries.length)} of{' '}
+                        {filteredEntries.length}
+                      </p>
                       <div className="flex items-center gap-1">
-                        <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="15 18 9 12 15 6" /></svg>
+                        <button
+                          onClick={() => setPage((p) => Math.max(1, p - 1))}
+                          disabled={page === 1}
+                          className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-muted-foreground"
+                          >
+                            <polyline points="15 18 9 12 15 6" />
+                          </svg>
                         </button>
-                        {Array.from({ length: totalPages }, (_, i) => i + 1).filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1).map((p, idx, arr) => (
-                          <React.Fragment key={p}>
-                            {idx > 0 && arr[idx - 1] !== p - 1 && <span className="text-xs text-muted-foreground px-1">…</span>}
-                            <button onClick={() => setPage(p)} className="w-7 h-7 rounded-md text-xs font-600 transition-colors" style={{ backgroundColor: p === page ? 'var(--accent)' : 'transparent', color: p === page ? 'white' : 'var(--foreground)' }}>{p}</button>
-                          </React.Fragment>
-                        ))}
-                        <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors">
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-muted-foreground"><polyline points="9 18 15 12 9 6" /></svg>
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                          .map((p, idx, arr) => (
+                            <React.Fragment key={p}>
+                              {idx > 0 && arr[idx - 1] !== p - 1 && (
+                                <span className="text-xs text-muted-foreground px-1">…</span>
+                              )}
+                              <button
+                                onClick={() => setPage(p)}
+                                className="w-7 h-7 rounded-md text-xs font-600 transition-colors"
+                                style={{
+                                  backgroundColor: p === page ? 'var(--accent)' : 'transparent',
+                                  color: p === page ? 'white' : 'var(--foreground)',
+                                }}
+                              >
+                                {p}
+                              </button>
+                            </React.Fragment>
+                          ))}
+                        <button
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                          disabled={page === totalPages}
+                          className="p-1.5 rounded-md hover:bg-secondary disabled:opacity-40 transition-colors"
+                        >
+                          <svg
+                            width="16"
+                            height="16"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                            className="text-muted-foreground"
+                          >
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
                         </button>
                       </div>
                     </div>
@@ -614,11 +873,24 @@ export default function TimeTrackingPage() {
 
               {/* Footer totals */}
               {filteredEntries.length > 0 && (
-                <div className="px-4 py-3 border-t flex items-center justify-between" style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}>
+                <div
+                  className="px-4 py-3 border-t flex items-center justify-between"
+                  style={{ borderColor: 'var(--border)', backgroundColor: 'var(--secondary)' }}
+                >
                   <p className="text-xs text-muted-foreground">{filteredEntries.length} entries</p>
                   <div className="flex items-center gap-4 text-xs">
-                    <span className="text-muted-foreground">Total break: <span className="font-600 text-foreground">{filteredEntries.reduce((s, e) => s + e.breakMinutes, 0)}m</span></span>
-                    <span className="text-muted-foreground">Total hours: <span className="text-base font-700 text-foreground font-tabular">{filteredEntries.reduce((s, e) => s + (e.totalHours ?? 0), 0).toFixed(1)}h</span></span>
+                    <span className="text-muted-foreground">
+                      Total break:{' '}
+                      <span className="font-600 text-foreground">
+                        {filteredEntries.reduce((s, e) => s + e.breakMinutes, 0)}m
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      Total hours:{' '}
+                      <span className="text-base font-700 text-foreground font-tabular">
+                        {filteredEntries.reduce((s, e) => s + (e.totalHours ?? 0), 0).toFixed(1)}h
+                      </span>
+                    </span>
                   </div>
                 </div>
               )}
@@ -631,16 +903,18 @@ export default function TimeTrackingPage() {
 }
 
 function StatusChip({ status }: { status: TimeEntry['status'] }) {
-  if (status === 'completed') return (
-    <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--success)' }}>
-      <CheckCircle2 size={11} /> Done
-    </span>
-  );
-  if (status === 'on-break') return (
-    <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--warning)' }}>
-      <AlertCircle size={11} /> Break
-    </span>
-  );
+  if (status === 'completed')
+    return (
+      <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--success)' }}>
+        <CheckCircle2 size={11} /> Done
+      </span>
+    );
+  if (status === 'on-break')
+    return (
+      <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--warning)' }}>
+        <AlertCircle size={11} /> Break
+      </span>
+    );
   return (
     <span className="flex items-center gap-0.5 text-xs" style={{ color: 'var(--success)' }}>
       <Play size={11} /> Active

@@ -53,7 +53,15 @@ const FAQS = [
   },
 ];
 
-function PlanCard({ plan, billingInterval, isPopular }: { plan: Plan; billingInterval: 'monthly' | 'annual'; isPopular: boolean }) {
+function PlanCard({
+  plan,
+  billingInterval,
+  isPopular,
+}: {
+  plan: Plan;
+  billingInterval: 'monthly' | 'annual';
+  isPopular: boolean;
+}) {
   const priceCents = billingInterval === 'annual' ? plan.annualPriceCents : plan.monthlyPriceCents;
   const isEnterprise = priceCents === 0 && plan.planKey !== 'starter';
   const displayPrice = isEnterprise ? null : Math.round(priceCents / 100);
@@ -89,7 +97,9 @@ function PlanCard({ plan, billingInterval, isPopular }: { plan: Plan; billingInt
             <span className={`text-4xl font-800 ${isPopular ? 'text-white' : 'text-[#0F1C2E]'}`}>
               ${displayPrice}
             </span>
-            <span className={`text-sm mb-1.5 ${isPopular ? 'text-blue-300' : 'text-slate-400'}`}>/mo</span>
+            <span className={`text-sm mb-1.5 ${isPopular ? 'text-blue-300' : 'text-slate-400'}`}>
+              /mo
+            </span>
           </div>
         ) : (
           <div className={`text-2xl font-700 ${isPopular ? 'text-white' : 'text-[#0F1C2E]'}`}>
@@ -112,7 +122,12 @@ function PlanCard({ plan, billingInterval, isPopular }: { plan: Plan; billingInt
               stroke="currentColor"
               viewBox="0 0 24 24"
             >
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2.5}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
             <span className={isPopular ? 'text-blue-100' : 'text-slate-600'}>{feature}</span>
           </li>
@@ -185,9 +200,10 @@ export default function PricingPage() {
   }, []);
 
   // Determine "popular" plan — second plan by sort order, or the one named "professional"
-  const popularIndex = plans.findIndex((p) => p.planKey === 'professional') !== -1
-    ? plans.findIndex((p) => p.planKey === 'professional')
-    : Math.min(1, plans.length - 1);
+  const popularIndex =
+    plans.findIndex((p) => p.planKey === 'professional') !== -1
+      ? plans.findIndex((p) => p.planKey === 'professional')
+      : Math.min(1, plans.length - 1);
 
   return (
     <div className="pt-16">
@@ -200,10 +216,14 @@ export default function PricingPage() {
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
             <div className="w-1.5 h-1.5 bg-[#60a5fa] rounded-full" />
-            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">Simple Pricing</span>
+            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">
+              Simple Pricing
+            </span>
           </div>
           <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-            Transparent pricing.<br />No surprises.
+            Transparent pricing.
+            <br />
+            No surprises.
           </h1>
           <p className="text-xl text-slate-300 max-w-2xl mx-auto mb-10">
             Start with a {14}-day free trial. No credit card required. Cancel any time.
@@ -238,12 +258,17 @@ export default function PricingPage() {
         <div className="max-w-7xl mx-auto px-6 lg:px-8">
           {loading ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
-              {[0, 1, 2].map((i) => <PlanSkeleton key={i} />)}
+              {[0, 1, 2].map((i) => (
+                <PlanSkeleton key={i} />
+              ))}
             </div>
           ) : plans.length === 0 ? (
             <div className="text-center py-16 text-slate-400">
               <p className="text-lg">Pricing plans are being updated. Please check back shortly.</p>
-              <Link href="/marketing/contact" className="mt-4 inline-block text-[#2563EB] font-600 hover:underline">
+              <Link
+                href="/marketing/contact"
+                className="mt-4 inline-block text-[#2563EB] font-600 hover:underline"
+              >
                 Contact us for pricing →
               </Link>
             </div>
@@ -270,17 +295,32 @@ export default function PricingPage() {
       {/* Feature comparison note */}
       <section className="py-16 bg-white">
         <div className="max-w-3xl mx-auto px-6 lg:px-8 text-center">
-          <h2 className="text-3xl font-bold text-[#0F1C2E] mb-4">Everything you need to run your operation</h2>
+          <h2 className="text-3xl font-bold text-[#0F1C2E] mb-4">
+            Everything you need to run your operation
+          </h2>
           <p className="text-slate-500 leading-relaxed">
-            {BRAND_IDENTITY.name} includes scheduling, job management, compliance, documents, inventory, reporting, contractor management and more — all in one platform.
+            {BRAND_IDENTITY.name} includes scheduling, job management, compliance, documents,
+            inventory, reporting, contractor management and more — all in one platform.
           </p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             {[
-              'Job Management', 'Scheduling', 'Compliance', 'Documents',
-              'Inventory', 'Reporting', 'Contractor Invoices', 'Time Tracking',
-              'Incident Reporting', 'Checklists', 'Notifications', 'Mobile Access',
+              'Job Management',
+              'Scheduling',
+              'Compliance',
+              'Documents',
+              'Inventory',
+              'Reporting',
+              'Contractor Invoices',
+              'Time Tracking',
+              'Incident Reporting',
+              'Checklists',
+              'Notifications',
+              'Mobile Access',
             ].map((feature) => (
-              <span key={feature} className="bg-slate-50 border border-slate-200 text-slate-600 text-xs font-500 px-3 py-1.5 rounded-full">
+              <span
+                key={feature}
+                className="bg-slate-50 border border-slate-200 text-slate-600 text-xs font-500 px-3 py-1.5 rounded-full"
+              >
                 {feature}
               </span>
             ))}
@@ -308,7 +348,12 @@ export default function PricingPage() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 9l-7 7-7-7"
+                    />
                   </svg>
                 </button>
                 {openFaq === i && (

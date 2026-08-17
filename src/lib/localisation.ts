@@ -52,9 +52,8 @@ export function formatCurrency(
   const fixed = Math.abs(amount).toFixed(s.currencyDecimalPrecision);
   const [intPart, decPart] = fixed.split('.');
   const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, s.thousandsSeparator);
-  const formattedNumber = decPart !== undefined
-    ? `${formattedInt}${s.decimalSeparator}${decPart}`
-    : formattedInt;
+  const formattedNumber =
+    decPart !== undefined ? `${formattedInt}${s.decimalSeparator}${decPart}` : formattedInt;
   const sign = amount < 0 ? '-' : '';
   return s.currencySymbolPosition === 'before'
     ? `${sign}${s.currencySymbol}${formattedNumber}`
@@ -82,9 +81,7 @@ export function formatNumber(
   const fixed = value.toFixed(decimalPlaces);
   const [intPart, decPart] = fixed.split('.');
   const formattedInt = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, s.thousandsSeparator);
-  return decPart !== undefined
-    ? `${formattedInt}${s.decimalSeparator}${decPart}`
-    : formattedInt;
+  return decPart !== undefined ? `${formattedInt}${s.decimalSeparator}${decPart}` : formattedInt;
 }
 
 // ─── Date Formatting ──────────────────────────────────────────────────────────
@@ -226,13 +223,9 @@ export function formatDistance(
 ): string {
   if (measurementSystem === 'imperial') {
     const miles = metres / 1609.344;
-    return miles < 0.1
-      ? `${(metres * 3.28084).toFixed(0)} ft`
-      : `${miles.toFixed(1)} mi`;
+    return miles < 0.1 ? `${(metres * 3.28084).toFixed(0)} ft` : `${miles.toFixed(1)} mi`;
   }
-  return metres < 1000
-    ? `${metres.toFixed(0)} m`
-    : `${(metres / 1000).toFixed(1)} km`;
+  return metres < 1000 ? `${metres.toFixed(0)} m` : `${(metres / 1000).toFixed(1)} km`;
 }
 
 export function formatWeight(

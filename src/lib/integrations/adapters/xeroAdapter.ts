@@ -146,7 +146,7 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       body: body.toString(),
     });
@@ -182,7 +182,7 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Accept': 'application/json',
+        Accept: 'application/json',
       },
       body: body.toString(),
     });
@@ -265,11 +265,16 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       // 200 = revoked; 400 = already invalid — both are acceptable
       if (!response.ok && response.status !== 400) {
         // Log warning but don't throw — local cleanup must still proceed
-        console.warn(`[XeroAdapter] Token revocation returned HTTP ${response.status} — proceeding with local cleanup`);
+        console.warn(
+          `[XeroAdapter] Token revocation returned HTTP ${response.status} — proceeding with local cleanup`
+        );
       }
     } catch (err) {
       // Network errors during revocation must not block local cleanup
-      console.warn('[XeroAdapter] Token revocation request failed — proceeding with local cleanup:', err instanceof Error ? err.message : 'Unknown');
+      console.warn(
+        '[XeroAdapter] Token revocation request failed — proceeding with local cleanup:',
+        err instanceof Error ? err.message : 'Unknown'
+      );
     }
   }
 
@@ -306,7 +311,11 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
     // Compute HMAC-SHA256 of raw body using the webhook key
     const encoder = new TextEncoder();
     const keyData = encoder.encode(signingSecret);
-    const bodyData = rawBody;
+    // `rawBody` arrives as a Node Buffer, whose backing store is typed as
+    // ArrayBufferLike (it may be a SharedArrayBuffer from Node's pool) and is
+    // therefore not assignable to the BufferSource that crypto.subtle.sign
+    // requires. Copy into a plain Uint8Array over its own ArrayBuffer.
+    const bodyData = new Uint8Array(rawBody);
 
     let computedSignature: string;
     try {
@@ -321,7 +330,10 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       const signatureBuffer = await crypto.subtle.sign('HMAC', cryptoKey, bodyData);
       computedSignature = btoa(String.fromCharCode(...new Uint8Array(signatureBuffer)));
     } catch (err) {
-      console.error('[XeroAdapter] Webhook HMAC computation failed:', err instanceof Error ? err.message : 'Unknown');
+      console.error(
+        '[XeroAdapter] Webhook HMAC computation failed:',
+        err instanceof Error ? err.message : 'Unknown'
+      );
       return { isValid: false };
     }
 
@@ -397,7 +409,7 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
     syncType: 'full' | 'incremental',
     cursor?: Record<string, unknown>
   ): Promise<SyncResult> {
-    let result: SyncResult = {
+    const result: SyncResult = {
       recordsFetched: 0,
       recordsCreated: 0,
       recordsUpdated: 0,
@@ -414,9 +426,10 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       }
 
       // Fetch contacts (with optional modified-since cursor for incremental)
-      const modifiedSince = syncType === 'incremental' && cursor?.modifiedSince
-        ? String(cursor.modifiedSince)
-        : undefined;
+      const modifiedSince =
+        syncType === 'incremental' && cursor?.modifiedSince
+          ? String(cursor.modifiedSince)
+          : undefined;
 
       const contactsResult = await this.fetchContacts(accessToken, externalOrgId, modifiedSince);
       result.recordsFetched += contactsResult.fetched;
@@ -424,7 +437,6 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
 
       // Set next cursor for incremental sync
       result.nextCursor = { modifiedSince: new Date().toISOString() };
-
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown sync error';
       result.recordsFailed += 1;
@@ -533,7 +545,7 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
 
     if (!response.ok) return null;
 
-    const data = await response.json() as { Organisations?: XeroOrganisation[] };
+    const data = (await response.json()) as { Organisations?: XeroOrganisation[] };
     return data.Organisations?.[0] ?? null;
   }
 
@@ -572,7 +584,7 @@ export class XeroProviderAdapter extends BaseProviderAdapter {
       throw new Error(`Xero Contacts API returned HTTP ${response.status}`);
     }
 
-    const data = await response.json() as { Contacts?: XeroContact[] };
+    const data = (await response.json()) as { Contacts?: XeroContact[] };
     const contacts = data.Contacts ?? [];
 
     return { fetched: contacts.length, updated: contacts.length };

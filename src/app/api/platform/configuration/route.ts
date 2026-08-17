@@ -39,34 +39,28 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
+import { guardPlatformRequest } from '@/lib/platformApiRoute';
+import { createAdminClient } from '@/lib/supabase/admin';
 import {
-  authenticateApiKey,
-  hasScope,
-  unauthorizedResponse,
-  forbiddenResponse,
-} from '@/lib/platformApiAuth';
-import { platformConfigurationService, PLATFORM_CONFIG_VERSION, type PlatformOrganisationConfig } from '@/lib/services/platformConfigurationService';
+  platformConfigurationService,
+  PLATFORM_CONFIG_VERSION,
+} from '@/lib/services/platformConfigurationService';
 import { logger } from '@/lib/logger';
-import {
-  checkRateLimit,
-  getRequestIdentifier,
-  RATE_LIMIT_CONFIGS,
-  rateLimitExceededResponse,
-  addRateLimitHeaders,
-} from '@/lib/rateLimit';
+import { addRateLimitHeaders } from '@/lib/rateLimit';
 
 const REQUIRED_SCOPE = 'platform-config:read';
 
 export async function GET(req: NextRequest) {
-  // ── Rate limiting ───────────────────────────────────────────────────────────
-  const identifier = getRequestIdentifier(req);
-  const rlResult = checkRateLimit(identifier, RATE_LIMIT_CONFIGS.platformApi);
-  if (!rlResult.success) return rateLimitExceededResponse(rlResult);
+  const guard = await guardPlatformRequest(req, REQUIRED_SCOPE);
+  if (!guard.ok) return guard.response;
+  const { ctx, rate: rlResult } = guard;
 
-  // ── Authentication & authorisation ─────────────────────────────────────────
-  const ctx = await authenticateApiKey(req);
-  if (!ctx) return unauthorizedResponse();
-  if (!hasScope(ctx, REQUIRED_SCOPE)) return forbiddenResponse();
+  // The configuration service defaulted to the BROWSER Supabase client, which
+  // has no session inside a route handler and therefore read as `anon` — every
+  // tenant-scoped policy matched nothing and this endpoint answered
+  // 404 ORG_NOT_FOUND for valid keys. Pass the service-role client explicitly;
+  // the tenant is fixed to the one the verified API key is bound to.
+  const db = createAdminClient();
 
   const { searchParams } = new URL(req.url);
 
@@ -74,7 +68,7 @@ export async function GET(req: NextRequest) {
   const manifestOnly = searchParams.get('manifestOnly') === 'true';
   if (manifestOnly) {
     try {
-      const manifest = await platformConfigurationService.getManifest(ctx.companyId);
+      const manifest = await platformConfigurationService.getManifest(ctx.companyId, db);
       if (!manifest) {
         return NextResponse.json(
           { error: 'Organisation not found', code: 'ORG_NOT_FOUND' },
@@ -83,7 +77,12 @@ export async function GET(req: NextRequest) {
       }
       return addRateLimitHeaders(NextResponse.json({ manifest }), rlResult);
     } catch (err) {
-      logger.error('api/platform/configuration', 'Unexpected error retrieving configuration', { companyId: ctx.companyId }, err);
+      logger.error(
+        'api/platform/configuration',
+        'Unexpected error retrieving configuration',
+        { companyId: ctx.companyId },
+        err
+      );
       return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
   }
@@ -91,12 +90,15 @@ export async function GET(req: NextRequest) {
   // ── Optional domain filtering ──────────────────────────────────────────────
   const domainsParam = searchParams.get('domains') ?? searchParams.get('domain');
   const requestedDomains = domainsParam
-    ? domainsParam.split(',').map((d) => d.trim()).filter(Boolean)
+    ? domainsParam
+        .split(',')
+        .map((d) => d.trim())
+        .filter(Boolean)
     : null;
 
   // ── Retrieve full configuration ────────────────────────────────────────────
   try {
-    const config = await platformConfigurationService.getOrganisationConfig(ctx.companyId);
+    const config = await platformConfigurationService.getOrganisationConfig(ctx.companyId, db);
 
     if (!config) {
       return NextResponse.json(
@@ -133,7 +135,12 @@ export async function GET(req: NextRequest) {
     // ── Return full configuration ──────────────────────────────────────────────
     return addRateLimitHeaders(NextResponse.json({ data: config }), rlResult);
   } catch (err) {
-    logger.error('api/platform/configuration', 'Unexpected error retrieving configuration', { companyId: ctx.companyId }, err);
+    logger.error(
+      'api/platform/configuration',
+      'Unexpected error retrieving configuration',
+      { companyId: ctx.companyId },
+      err
+    );
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -152,8 +159,10 @@ export async function HEAD(_req: NextRequest) {
     schemaVersion: PLATFORM_CONFIG_VERSION,
     apiVersion: 'v3',
     domains: platformConfigurationService.getConfigDomains(),
-    description: 'Platform Configuration Service — authoritative operational configuration for all Innovion clients',
-    architecturalPrinciple: 'The Innovion Platform is the Single Source of Truth. All clients consume configuration through this service.',
+    description:
+      'Platform Configuration Service — authoritative operational configuration for all Innovion clients',
+    architecturalPrinciple:
+      'The Innovion Platform is the Single Source of Truth. All clients consume configuration through this service.',
     compatibleClients: [
       'Innovion Web Platform',
       'Innovion Workforce',

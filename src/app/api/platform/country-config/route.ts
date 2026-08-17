@@ -11,22 +11,24 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { authenticateApiKey, hasScope, unauthorizedResponse, forbiddenResponse } from '@/lib/platformApiAuth';
-import { createClient } from '@/lib/supabase/server';
+import { guardPlatformRequest } from '@/lib/platformApiRoute';
+import { createAdminClient } from '@/lib/supabase/admin';
 import { getCountryConfig, COUNTRY_CONFIGS } from '@/lib/countryConfig';
 import { DEFAULT_LOCALISATION } from '@/lib/localisation';
+import { addRateLimitHeaders } from '@/lib/rateLimit';
 
 export async function GET(req: NextRequest) {
-  const ctx = await authenticateApiKey(req);
-  if (!ctx) return unauthorizedResponse();
-  if (!hasScope(ctx, 'country-config:read')) return forbiddenResponse();
+  // This route previously had NO rate limiting at all, unlike its siblings.
+  const guard = await guardPlatformRequest(req, 'country-config:read');
+  if (!guard.ok) return guard.response;
+  const { ctx, rate: rlResult } = guard;
 
   const { searchParams } = new URL(req.url);
   let countryCode = (searchParams.get('country') ?? '').toUpperCase();
 
   // If no country specified, derive from company localisation
   if (!countryCode) {
-    const supabase = await createClient();
+    const supabase = createAdminClient();
     const { data: locData } = await supabase
       .from('company_localisation')
       .select('country')
@@ -40,20 +42,21 @@ export async function GET(req: NextRequest) {
   // Strip RegExp objects (not JSON-serialisable) from businessIdentifiers
   const safeConfig = {
     ...config,
-    businessIdentifiers: config.businessIdentifiers.map(({ validationPattern: _vp, ...rest }) => rest),
+    businessIdentifiers: config.businessIdentifiers.map(
+      ({ validationPattern: _vp, ...rest }) => rest
+    ),
   };
 
-  return NextResponse.json({ data: safeConfig });
+  return addRateLimitHeaders(NextResponse.json({ data: safeConfig }), rlResult);
 }
 
 /**
- * GET /api/platform/country-config?list=true
+ * HEAD /api/platform/country-config
  * Returns the list of all supported country codes and names.
  */
 export async function HEAD(req: NextRequest) {
-  const ctx = await authenticateApiKey(req);
-  if (!ctx) return unauthorizedResponse();
-  if (!hasScope(ctx, 'country-config:read')) return forbiddenResponse();
+  const guard = await guardPlatformRequest(req, 'country-config:read');
+  if (!guard.ok) return guard.response;
 
   const list = Object.values(COUNTRY_CONFIGS).map((c) => ({
     countryCode: c.countryCode,

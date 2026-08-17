@@ -16,12 +16,18 @@ export default function CookieConsentBanner() {
   }, []);
 
   const acceptAll = () => {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify({ analytics: true, marketing: true, timestamp: Date.now() }));
+    localStorage.setItem(
+      CONSENT_KEY,
+      JSON.stringify({ analytics: true, marketing: true, timestamp: Date.now() })
+    );
     setVisible(false);
   };
 
   const acceptEssential = () => {
-    localStorage.setItem(CONSENT_KEY, JSON.stringify({ analytics: false, marketing: false, timestamp: Date.now() }));
+    localStorage.setItem(
+      CONSENT_KEY,
+      JSON.stringify({ analytics: false, marketing: false, timestamp: Date.now() })
+    );
     setVisible(false);
   };
 
@@ -30,38 +36,71 @@ export default function CookieConsentBanner() {
   return (
     <div
       className="fixed bottom-0 left-0 right-0 z-50 p-4 animate-slide-up"
-      style={{ backgroundColor: 'var(--card)', borderTop: '1px solid var(--border)', boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' }}
+      style={{
+        backgroundColor: 'var(--card)',
+        borderTop: '1px solid var(--border)',
+        boxShadow: '0 -4px 24px rgba(0,0,0,0.12)',
+      }}
     >
       <div className="max-w-5xl mx-auto">
         <div className="flex items-start gap-4">
-          <div className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center" style={{ backgroundColor: 'rgba(37,99,235,0.1)' }}>
+          <div
+            className="flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(37,99,235,0.1)' }}
+          >
             <Cookie size={18} style={{ color: 'var(--accent)' }} />
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-700 text-foreground">We use cookies</p>
             <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
-              Innovion uses cookies to improve your experience, analyse site usage, and for marketing purposes.
-              By clicking &quot;Accept All&quot; you consent to our use of cookies.{' '}
-              <a href="/marketing/privacy" className="text-accent hover:underline font-500">Privacy Policy</a>
-              {' '}·{' '}
-              <button onClick={() => setShowDetails(!showDetails)} className="text-accent hover:underline font-500">
+              Innovion uses cookies to improve your experience, analyse site usage, and for
+              marketing purposes. By clicking &quot;Accept All&quot; you consent to our use of
+              cookies.{' '}
+              <a href="/marketing/privacy" className="text-accent hover:underline font-500">
+                Privacy Policy
+              </a>{' '}
+              ·{' '}
+              <button
+                onClick={() => setShowDetails(!showDetails)}
+                className="text-accent hover:underline font-500"
+              >
                 {showDetails ? 'Hide details' : 'Cookie details'}
               </button>
             </p>
 
             {showDetails && (
-              <div className="mt-3 space-y-2 p-3 rounded-lg" style={{ backgroundColor: 'var(--secondary)' }}>
+              <div
+                className="mt-3 space-y-2 p-3 rounded-lg"
+                style={{ backgroundColor: 'var(--secondary)' }}
+              >
                 {[
-                  { name: 'Essential', desc: 'Required for the site to function. Cannot be disabled.', required: true },
-                  { name: 'Analytics', desc: 'Help us understand how visitors interact with the site (Google Analytics).', required: false },
-                  { name: 'Marketing', desc: 'Used to deliver relevant advertisements and track campaign performance.', required: false },
+                  {
+                    name: 'Essential',
+                    desc: 'Required for the site to function. Cannot be disabled.',
+                    required: true,
+                  },
+                  {
+                    name: 'Analytics',
+                    desc: 'Help us understand how visitors interact with the site (Google Analytics).',
+                    required: false,
+                  },
+                  {
+                    name: 'Marketing',
+                    desc: 'Used to deliver relevant advertisements and track campaign performance.',
+                    required: false,
+                  },
                 ]?.map((cookie) => (
                   <div key={cookie?.name} className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs font-600 text-foreground">{cookie?.name}</p>
                       <p className="text-xs text-muted-foreground">{cookie?.desc}</p>
                     </div>
-                    <span className="text-xs font-500 flex-shrink-0" style={{ color: cookie?.required ? 'var(--success)' : 'var(--muted-foreground)' }}>
+                    <span
+                      className="text-xs font-500 flex-shrink-0"
+                      style={{
+                        color: cookie?.required ? 'var(--success)' : 'var(--muted-foreground)',
+                      }}
+                    >
                       {cookie?.required ? 'Always on' : 'Optional'}
                     </span>
                   </div>

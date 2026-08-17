@@ -9,11 +9,18 @@ interface PermissionDeniedProps {
   inline?: boolean;
 }
 
-export default function PermissionDenied({ action, onBack, inline = false }: PermissionDeniedProps) {
+export default function PermissionDenied({
+  action,
+  onBack,
+  inline = false,
+}: PermissionDeniedProps) {
   const router = useRouter();
 
   const handleBack = () => {
-    if (onBack) { onBack(); return; }
+    if (onBack) {
+      onBack();
+      return;
+    }
     router.back();
   };
 
@@ -21,7 +28,11 @@ export default function PermissionDenied({ action, onBack, inline = false }: Per
     return (
       <div
         className="flex items-center gap-3 px-4 py-3 rounded-xl text-sm"
-        style={{ backgroundColor: 'var(--warning-bg)', border: '1px solid rgba(245,158,11,0.2)', color: 'var(--warning)' }}
+        style={{
+          backgroundColor: 'var(--warning-bg)',
+          border: '1px solid rgba(245,158,11,0.2)',
+          color: 'var(--warning)',
+        }}
         role="alert"
       >
         <ShieldOff size={16} className="flex-shrink-0" />

@@ -6,7 +6,13 @@
 
 # Node modules
 node_modules/
-package-lock.json
+
+# NOTE (Team A, 2026-08-17): package-lock.json is deliberately NOT ignored.
+# It was previously listed here, which meant it was never committed. A clean
+# clone therefore had no lockfile, `npm ci` was impossible, and every install
+# silently re-resolved the full transitive dependency tree — incompatible with
+# a reproducible, auditable build. The lockfile must be committed and reviewed
+# like any other source file.
 
 # Next.js build output
 .next/

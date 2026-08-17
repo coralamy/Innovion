@@ -114,7 +114,7 @@ async function validateMicrosoftNotifications(
       if (clientState !== webhookRecord.client_state) {
         console.warn(
           `[Webhook/Microsoft] clientState mismatch for subscription ${subscriptionId}. ` +
-          `Expected stored value, received: ${clientState ? '[present but mismatched]' : '[missing]'}`
+            `Expected stored value, received: ${clientState ? '[present but mismatched]' : '[missing]'}`
         );
         invalidSubscriptionIds.push(subscriptionId);
         continue;
@@ -154,7 +154,9 @@ async function handleMicrosoftLifecycleEvents(
       .single();
 
     if (!webhookRecord) {
-      console.warn(`[Webhook/Microsoft] Lifecycle event for unknown subscription: ${subscriptionId}`);
+      console.warn(
+        `[Webhook/Microsoft] Lifecycle event for unknown subscription: ${subscriptionId}`
+      );
       continue;
     }
 
@@ -179,7 +181,9 @@ async function handleMicrosoftLifecycleEvents(
             message: 'Microsoft Graph subscription requires reauthorisation. User must reconnect.',
           },
         });
-        console.info(`[Webhook/Microsoft] reauthorizationRequired for company ${company_id}, subscription ${subscriptionId}`);
+        console.info(
+          `[Webhook/Microsoft] reauthorizationRequired for company ${company_id}, subscription ${subscriptionId}`
+        );
         break;
 
       case 'subscriptionRemoved':
@@ -206,10 +210,13 @@ async function handleMicrosoftLifecycleEvents(
             message: 'Microsoft Graph subscription was removed. Resubscription required.',
           },
         });
-        console.info(`[Webhook/Microsoft] subscriptionRemoved for company ${company_id}, subscription ${subscriptionId}`);
+        console.info(
+          `[Webhook/Microsoft] subscriptionRemoved for company ${company_id}, subscription ${subscriptionId}`
+        );
         break;
 
-      case 'missed': await supabase.from('integration_sync_jobs').insert({
+      case 'missed':
+        await supabase.from('integration_sync_jobs').insert({
           company_id,
           provider_slug,
           sync_type: 'incremental',
@@ -230,7 +237,9 @@ async function handleMicrosoftLifecycleEvents(
             message: 'Microsoft Graph missed notifications — reconciliation sync queued.',
           },
         });
-        console.info(`[Webhook/Microsoft] missed notifications for company ${company_id}, subscription ${subscriptionId} — reconciliation sync queued`);
+        console.info(
+          `[Webhook/Microsoft] missed notifications for company ${company_id}, subscription ${subscriptionId} — reconciliation sync queued`
+        );
         break;
 
       default:
@@ -269,7 +278,10 @@ async function publishWebhookEventToEventBus(
     });
   } catch (err) {
     // Non-fatal — event bus publishing must not block webhook acknowledgement
-    console.warn(`[Webhook] Failed to publish event to outbox for ${providerSlug}:`, err instanceof Error ? err.message : 'Unknown');
+    console.warn(
+      `[Webhook] Failed to publish event to outbox for ${providerSlug}:`,
+      err instanceof Error ? err.message : 'Unknown'
+    );
   }
 }
 
@@ -282,9 +294,11 @@ async function publishWebhookEventToEventBus(
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const { provider } = params;
+  // Next.js 15: route params are a Promise. Destructuring synchronously is a
+  // type error and yields undefined at runtime.
+  const { provider } = await params;
 
   if (provider === 'microsoft') {
     const validationToken = request.nextUrl.searchParams.get('validationToken');
@@ -310,14 +324,17 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { provider: string } }
+  { params }: { params: Promise<{ provider: string }> }
 ) {
-  const { provider } = params;
+  // Next.js 15: route params are a Promise.
+  const { provider } = await params;
 
   // Read raw body for signature validation — must happen before any parsing
   const rawBody = Buffer.from(await request.arrayBuffer());
   const headers: Record<string, string> = {};
-  request.headers.forEach((value, key) => { headers[key.toLowerCase()] = value; });
+  request.headers.forEach((value, key) => {
+    headers[key.toLowerCase()] = value;
+  });
 
   const adapter = getAdapter(provider);
 
@@ -355,7 +372,7 @@ export async function POST(
       if (!validationResult.valid) {
         console.warn(
           `[Webhook/Microsoft] clientState validation failed for subscriptions: ` +
-          validationResult.invalidSubscriptionIds.join(', ')
+            validationResult.invalidSubscriptionIds.join(', ')
         );
         return NextResponse.json({ error: 'clientState validation failed' }, { status: 401 });
       }
@@ -575,13 +592,20 @@ export async function POST(
       }
     } else if (!adapter) {
       console.warn(`[Webhook] No adapter for provider '${provider}' — event not processed`);
-      return NextResponse.json({ received: true, processed: false, reason: 'adapter_not_registered' });
+      return NextResponse.json({
+        received: true,
+        processed: false,
+        reason: 'adapter_not_registered',
+      });
     } else {
       console.error(`[Webhook] No signing secret configured for provider '${provider}'`);
       return NextResponse.json({ error: 'Webhook not configured' }, { status: 503 });
     }
   } catch (validationErr) {
-    console.error(`[Webhook] Validation error for ${provider}:`, validationErr instanceof Error ? validationErr.message : 'Unknown');
+    console.error(
+      `[Webhook] Validation error for ${provider}:`,
+      validationErr instanceof Error ? validationErr.message : 'Unknown'
+    );
     return NextResponse.json({ error: 'Webhook validation failed' }, { status: 500 });
   }
 
@@ -623,10 +647,19 @@ export async function POST(
 
     // Publish to Event Bus outbox
     if (companyId && eventType) {
-      await publishWebhookEventToEventBus(supabase, companyId, provider, eventType, externalEventId);
+      await publishWebhookEventToEventBus(
+        supabase,
+        companyId,
+        provider,
+        eventType,
+        externalEventId
+      );
     }
   } catch (persistErr) {
-    console.error(`[Webhook] Failed to persist event for ${provider}:`, persistErr instanceof Error ? persistErr.message : 'Unknown');
+    console.error(
+      `[Webhook] Failed to persist event for ${provider}:`,
+      persistErr instanceof Error ? persistErr.message : 'Unknown'
+    );
     return NextResponse.json({ error: 'Failed to persist webhook event' }, { status: 500 });
   }
 

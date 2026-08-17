@@ -6,15 +6,19 @@ export default function ContactPage() {
   const [submitted, setSubmitted] = useState(false);
   const [sending, setSending] = useState(false);
   const [form, setForm] = useState({
-    name: '', email: '', company: '', industry: '', message: '',
+    name: '',
+    email: '',
+    company: '',
+    industry: '',
+    message: '',
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSending(true);
     try {
+      // The recipient is now fixed server-side to the configured support inbox.
       await emailService.sendContactForm(
-        'support@innovion.com.au',
         form.name,
         form.email,
         form.company,
@@ -39,7 +43,9 @@ export default function ContactPage() {
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 text-center">
           <div className="inline-flex items-center gap-2 bg-white/10 border border-white/20 rounded-full px-4 py-1.5 mb-6">
             <div className="w-1.5 h-1.5 bg-[#60a5fa] rounded-full" />
-            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">Contact</span>
+            <span className="text-white/70 text-xs font-semibold tracking-wide uppercase">
+              Contact
+            </span>
           </div>
           <h1 className="text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
             Get in touch
@@ -62,18 +68,32 @@ export default function ContactPage() {
               {submitted ? (
                 <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-8 text-center">
                   <div className="w-12 h-12 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <svg className="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    <svg
+                      className="w-6 h-6 text-emerald-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
+                      />
                     </svg>
                   </div>
                   <h3 className="font-bold text-[#0F1C2E] mb-2">Message sent!</h3>
-                  <p className="text-slate-500 text-sm">Thank you for reaching out. We&apos;ll be in touch shortly.</p>
+                  <p className="text-slate-500 text-sm">
+                    Thank you for reaching out. We&apos;ll be in touch shortly.
+                  </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Full name *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Full name *
+                      </label>
                       <input
                         type="text"
                         required
@@ -84,7 +104,9 @@ export default function ContactPage() {
                       />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1.5">Email address *</label>
+                      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                        Email address *
+                      </label>
                       <input
                         type="email"
                         required
@@ -96,7 +118,9 @@ export default function ContactPage() {
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Company name</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Company name
+                    </label>
                     <input
                       type="text"
                       value={form.company}
@@ -106,7 +130,9 @@ export default function ContactPage() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Industry</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Industry
+                    </label>
                     <select
                       value={form.industry}
                       onChange={(e) => setForm({ ...form, industry: e.target.value })}
@@ -129,7 +155,9 @@ export default function ContactPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1.5">Message *</label>
+                    <label className="block text-sm font-medium text-slate-700 mb-1.5">
+                      Message *
+                    </label>
                     <textarea
                       required
                       rows={5}
@@ -147,8 +175,19 @@ export default function ContactPage() {
                     {sending ? (
                       <>
                         <svg className="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          />
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"
+                          />
                         </svg>
                         Sending…
                       </>
@@ -168,8 +207,18 @@ export default function ContactPage() {
                   {[
                     {
                       icon: (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
+                          />
                         </svg>
                       ),
                       label: 'Email',
@@ -177,21 +226,38 @@ export default function ContactPage() {
                     },
                     {
                       icon: (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                        <svg
+                          className="w-5 h-5"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={1.8}
+                            d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9"
+                          />
                         </svg>
                       ),
                       label: 'Website',
                       value: 'www.coralamy.com',
                     },
                   ].map((item) => (
-                    <div key={item.label} className="flex items-center gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100">
+                    <div
+                      key={item.label}
+                      className="flex items-center gap-4 p-5 bg-slate-50 rounded-2xl border border-slate-100"
+                    >
                       <div className="w-10 h-10 bg-blue-50 text-[#2563EB] rounded-xl flex items-center justify-center flex-shrink-0">
                         {item.icon}
                       </div>
                       <div>
-                        <div className="text-xs text-slate-400 font-medium uppercase tracking-wide">{item.label}</div>
-                        <div className="text-sm font-semibold text-[#0F1C2E] mt-0.5">{item.value}</div>
+                        <div className="text-xs text-slate-400 font-medium uppercase tracking-wide">
+                          {item.label}
+                        </div>
+                        <div className="text-sm font-semibold text-[#0F1C2E] mt-0.5">
+                          {item.value}
+                        </div>
                       </div>
                     </div>
                   ))}
@@ -201,7 +267,8 @@ export default function ContactPage() {
               <div className="bg-[#0F1C2E] rounded-2xl p-8">
                 <h3 className="font-bold text-white mb-3">Ready to start immediately?</h3>
                 <p className="text-slate-300 text-sm leading-relaxed mb-5">
-                  Innovion is designed to be intuitive enough to start without a demonstration. Begin your free trial and explore the platform yourself.
+                  Innovion is designed to be intuitive enough to start without a demonstration.
+                  Begin your free trial and explore the platform yourself.
                 </p>
                 <a
                   href="/sign-up-login"
@@ -209,7 +276,12 @@ export default function ContactPage() {
                 >
                   Start Free Trial
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M17 8l4 4m0 0l-4 4m4-4H3"
+                    />
                   </svg>
                 </a>
               </div>

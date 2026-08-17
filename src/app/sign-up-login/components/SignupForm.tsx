@@ -24,9 +24,27 @@ interface SignupFormProps {
 }
 
 const plans = [
-  { id: 'plan-starter', value: 'starter', label: 'Starter', price: '$49/mo', desc: 'Up to 5 contractors' },
-  { id: 'plan-growth', value: 'growth', label: 'Growth', price: '$99/mo', desc: 'Up to 15 contractors' },
-  { id: 'plan-enterprise', value: 'enterprise', label: 'Enterprise', price: 'Custom', desc: 'Unlimited contractors' },
+  {
+    id: 'plan-starter',
+    value: 'starter',
+    label: 'Starter',
+    price: '$49/mo',
+    desc: 'Up to 5 contractors',
+  },
+  {
+    id: 'plan-growth',
+    value: 'growth',
+    label: 'Growth',
+    price: '$99/mo',
+    desc: 'Up to 15 contractors',
+  },
+  {
+    id: 'plan-enterprise',
+    value: 'enterprise',
+    label: 'Enterprise',
+    price: 'Custom',
+    desc: 'Unlimited contractors',
+  },
 ];
 
 export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
@@ -60,17 +78,17 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         plan: data.plan,
       });
       // Send welcome email (non-blocking)
-      emailService.sendWelcome(
-        data.email,
-        `${data.firstName} ${data.lastName}`,
-        data.companyName,
-        data.plan
-      ).catch(() => {/* silent fail — email is best-effort */});
+      emailService
+        .sendWelcome(data.email, `${data.firstName} ${data.lastName}`, data.companyName, data.plan)
+        .catch(() => {
+          /* silent fail — email is best-effort */
+        });
       toast.success('Account created! Welcome to Innovion.');
       router.push('/onboarding');
       router.refresh();
     } catch (error: unknown) {
-      const msg = (error as { message?: string })?.message || 'Failed to create account. Please try again.';
+      const msg =
+        (error as { message?: string })?.message || 'Failed to create account. Please try again.';
       setAuthError(msg);
     }
   };
@@ -79,20 +97,34 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
     <div className="animate-fade-in" suppressHydrationWarning>
       <div className="mb-6">
         <h2 className="text-2xl font-700 text-foreground">Create your workspace</h2>
-        <p className="text-sm text-muted-foreground mt-1">14-day free trial · No credit card required</p>
+        <p className="text-sm text-muted-foreground mt-1">
+          14-day free trial · No credit card required
+        </p>
       </div>
 
       {authError && (
-        <div className="flex items-start gap-3 p-3 rounded-xl mb-5 border" style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}>
+        <div
+          className="flex items-start gap-3 p-3 rounded-xl mb-5 border"
+          style={{ backgroundColor: 'var(--danger-bg)', borderColor: 'rgba(239,68,68,0.3)' }}
+        >
           <AlertCircle size={16} className="text-danger flex-shrink-0 mt-0.5" />
           <p className="text-sm text-danger font-500">{authError}</p>
         </div>
       )}
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate suppressHydrationWarning>
+      <form
+        onSubmit={handleSubmit(onSubmit)}
+        className="space-y-4"
+        noValidate
+        suppressHydrationWarning
+      >
         {/* Company name */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-company" suppressHydrationWarning>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="signup-company"
+            suppressHydrationWarning
+          >
             Company name
           </label>
           <div suppressHydrationWarning>
@@ -105,16 +137,24 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               {...register('companyName', { required: 'Company name is required' })}
             />
           </div>
-          {errors.companyName && <p className="text-xs text-danger mt-1 font-500">{errors.companyName.message}</p>}
+          {errors.companyName && (
+            <p className="text-xs text-danger mt-1 font-500">{errors.companyName.message}</p>
+          )}
         </div>
 
         {/* ABN */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-abn" suppressHydrationWarning>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="signup-abn"
+            suppressHydrationWarning
+          >
             ABN
             <span className="ml-1 text-muted-foreground font-400">(optional)</span>
           </label>
-          <p className="text-xs text-muted-foreground mb-1.5">11-digit Australian Business Number</p>
+          <p className="text-xs text-muted-foreground mb-1.5">
+            11-digit Australian Business Number
+          </p>
           <div suppressHydrationWarning>
             <input
               id="signup-abn"
@@ -123,7 +163,10 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               placeholder="12 345 678 901"
               suppressHydrationWarning
               {...register('abn', {
-                pattern: { value: /^(\d{2}\s?\d{3}\s?\d{3}\s?\d{3}|\d{11})$/, message: 'Enter a valid 11-digit ABN' },
+                pattern: {
+                  value: /^(\d{2}\s?\d{3}\s?\d{3}\s?\d{3}|\d{11})$/,
+                  message: 'Enter a valid 11-digit ABN',
+                },
               })}
             />
           </div>
@@ -133,7 +176,13 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
         {/* Name row */}
         <div className="grid grid-cols-2 gap-3" suppressHydrationWarning>
           <div suppressHydrationWarning>
-            <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-firstname" suppressHydrationWarning>First name</label>
+            <label
+              className="block text-sm font-600 text-foreground mb-1.5"
+              htmlFor="signup-firstname"
+              suppressHydrationWarning
+            >
+              First name
+            </label>
             <div suppressHydrationWarning>
               <input
                 id="signup-firstname"
@@ -144,10 +193,18 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                 {...register('firstName', { required: 'Required' })}
               />
             </div>
-            {errors.firstName && <p className="text-xs text-danger mt-1 font-500">{errors.firstName.message}</p>}
+            {errors.firstName && (
+              <p className="text-xs text-danger mt-1 font-500">{errors.firstName.message}</p>
+            )}
           </div>
           <div suppressHydrationWarning>
-            <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-lastname" suppressHydrationWarning>Last name</label>
+            <label
+              className="block text-sm font-600 text-foreground mb-1.5"
+              htmlFor="signup-lastname"
+              suppressHydrationWarning
+            >
+              Last name
+            </label>
             <div suppressHydrationWarning>
               <input
                 id="signup-lastname"
@@ -158,13 +215,21 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                 {...register('lastName', { required: 'Required' })}
               />
             </div>
-            {errors.lastName && <p className="text-xs text-danger mt-1 font-500">{errors.lastName.message}</p>}
+            {errors.lastName && (
+              <p className="text-xs text-danger mt-1 font-500">{errors.lastName.message}</p>
+            )}
           </div>
         </div>
 
         {/* Email */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-email" suppressHydrationWarning>Work email</label>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="signup-email"
+            suppressHydrationWarning
+          >
+            Work email
+          </label>
           <div suppressHydrationWarning>
             <input
               id="signup-email"
@@ -178,13 +243,23 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               })}
             />
           </div>
-          {errors.email && <p className="text-xs text-danger mt-1 font-500">{errors.email.message}</p>}
+          {errors.email && (
+            <p className="text-xs text-danger mt-1 font-500">{errors.email.message}</p>
+          )}
         </div>
 
         {/* Password */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-password" suppressHydrationWarning>Password</label>
-          <p className="text-xs text-muted-foreground mb-1.5">Minimum 8 characters with a number and symbol</p>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="signup-password"
+            suppressHydrationWarning
+          >
+            Password
+          </label>
+          <p className="text-xs text-muted-foreground mb-1.5">
+            Minimum 8 characters with a number and symbol
+          </p>
           <div className="relative" suppressHydrationWarning>
             <input
               id="signup-password"
@@ -195,19 +270,34 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
               {...register('password', {
                 required: 'Password is required',
                 minLength: { value: 8, message: 'Minimum 8 characters' },
-                pattern: { value: /(?=.*[0-9])(?=.*[!@#$%^&*])/, message: 'Must include a number and symbol' },
+                pattern: {
+                  value: /(?=.*[0-9])(?=.*[!@#$%^&*])/,
+                  message: 'Must include a number and symbol',
+                },
               })}
             />
-            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
               {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {errors.password && <p className="text-xs text-danger mt-1 font-500">{errors.password.message}</p>}
+          {errors.password && (
+            <p className="text-xs text-danger mt-1 font-500">{errors.password.message}</p>
+          )}
         </div>
 
         {/* Confirm Password */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="signup-confirm-password" suppressHydrationWarning>Confirm password</label>
+          <label
+            className="block text-sm font-600 text-foreground mb-1.5"
+            htmlFor="signup-confirm-password"
+            suppressHydrationWarning
+          >
+            Confirm password
+          </label>
           <div className="relative" suppressHydrationWarning>
             <input
               id="signup-confirm-password"
@@ -220,21 +310,31 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
                 validate: (value) => value === passwordValue || 'Passwords do not match',
               })}
             />
-            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              type="button"
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground transition-colors"
+            >
               {showConfirmPassword ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           </div>
-          {errors.confirmPassword && <p className="text-xs text-danger mt-1 font-500">{errors.confirmPassword.message}</p>}
+          {errors.confirmPassword && (
+            <p className="text-xs text-danger mt-1 font-500">{errors.confirmPassword.message}</p>
+          )}
         </div>
 
         {/* Plan selection */}
         <div suppressHydrationWarning>
-          <label className="block text-sm font-600 text-foreground mb-2" suppressHydrationWarning>Select plan</label>
+          <label className="block text-sm font-600 text-foreground mb-2" suppressHydrationWarning>
+            Select plan
+          </label>
           <div className="grid grid-cols-3 gap-2" suppressHydrationWarning>
             {plans.map((plan) => (
               <label key={plan.id} className="cursor-pointer">
                 <input type="radio" value={plan.value} className="sr-only" {...register('plan')} />
-                <div className={`border rounded-xl p-3 text-center transition-all ${watch('plan') === plan.value ? 'border-accent ring-2 ring-accent/20' : 'border-border hover:border-accent/50'}`}>
+                <div
+                  className={`border rounded-xl p-3 text-center transition-all ${watch('plan') === plan.value ? 'border-accent ring-2 ring-accent/20' : 'border-border hover:border-accent/50'}`}
+                >
                   <p className="text-xs font-700 text-foreground">{plan.label}</p>
                   <p className="text-xs font-600 text-accent mt-0.5">{plan.price}</p>
                   <p className="text-xs text-muted-foreground mt-0.5">{plan.desc}</p>
@@ -257,12 +357,26 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
             </div>
             <span className="text-sm text-muted-foreground">
               I agree to Innovion&apos;s{' '}
-              <a href="/marketing/terms" target="_blank" className="text-accent font-600 hover:underline">Terms of Service</a>
-              {' '}and{' '}
-              <a href="/marketing/privacy" target="_blank" className="text-accent font-600 hover:underline">Privacy Policy</a>
+              <a
+                href="/marketing/terms"
+                target="_blank"
+                className="text-accent font-600 hover:underline"
+              >
+                Terms of Service
+              </a>{' '}
+              and{' '}
+              <a
+                href="/marketing/privacy"
+                target="_blank"
+                className="text-accent font-600 hover:underline"
+              >
+                Privacy Policy
+              </a>
             </span>
           </label>
-          {errors.terms && <p className="text-xs text-danger mt-1 font-500">{errors.terms.message}</p>}
+          {errors.terms && (
+            <p className="text-xs text-danger mt-1 font-500">{errors.terms.message}</p>
+          )}
         </div>
 
         <button
@@ -284,7 +398,9 @@ export default function SignupForm({ onSwitchToLogin }: SignupFormProps) {
 
       <p className="text-center text-sm text-muted-foreground mt-4">
         Already have an account?{' '}
-        <button onClick={onSwitchToLogin} className="font-600 text-accent hover:underline">Sign in</button>
+        <button onClick={onSwitchToLogin} className="font-600 text-accent hover:underline">
+          Sign in
+        </button>
       </p>
     </div>
   );

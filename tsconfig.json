@@ -37,6 +37,14 @@
     ".next/next-build/types/**/*.ts"
   ],
   "exclude": [
-    "node_modules"
+    "node_modules",
+    // Supabase Edge Functions run on DENO, not Node/Next. They import from
+    // `https://deno.land/...` and `https://esm.sh/...` URL specifiers, which
+    // this compiler cannot resolve and is not meant to. Including them made
+    // `npm run type-check` fail with six unfixable module-resolution errors
+    // that had nothing to do with the application, which is a large part of
+    // why `typescript.ignoreBuildErrors` had been switched on in
+    // next.config.mjs. They are type-checked by `deno check` instead.
+    "supabase/functions"
   ]
 }

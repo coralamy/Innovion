@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
+import PlannedAction from '@/components/ui/PlannedAction';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -219,7 +220,10 @@ export default function ProfilePage() {
           <div className="lg:col-span-1">
             <div className="card-elevated overflow-hidden">
               {/* Avatar section */}
-              <div className="p-5 border-b flex flex-col items-center gap-3" style={{ borderColor: 'var(--border)' }}>
+              <div
+                className="p-5 border-b flex flex-col items-center gap-3"
+                style={{ borderColor: 'var(--border)' }}
+              >
                 <div className="relative">
                   <div
                     className="w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-700 flex-shrink-0"
@@ -227,13 +231,13 @@ export default function ProfilePage() {
                   >
                     {getInitials(profile.full_name)}
                   </div>
-                  <button
+                  <PlannedAction
                     className="absolute bottom-0 right-0 w-6 h-6 rounded-full flex items-center justify-center text-white"
                     style={{ backgroundColor: 'var(--accent)' }}
-                    title="Change avatar"
+                    title="Uploading a profile photo is not available yet."
                   >
                     <Camera size={12} />
-                  </button>
+                  </PlannedAction>
                 </div>
                 <div className="text-center min-w-0">
                   <p className="text-sm font-700 text-foreground truncate">
@@ -241,7 +245,9 @@ export default function ProfilePage() {
                   </p>
                   <p className="text-xs text-muted-foreground truncate">{profile.email}</p>
                   {profile.job_title && (
-                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{profile.job_title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                      {profile.job_title}
+                    </p>
                   )}
                 </div>
               </div>
@@ -252,7 +258,10 @@ export default function ProfilePage() {
                 return (
                   <button
                     key={tab.id}
-                    onClick={() => { setActiveTab(tab.id); setError(''); }}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setError('');
+                    }}
                     className="w-full flex items-center gap-3 px-4 py-3 text-sm transition-colors text-left"
                     style={{
                       backgroundColor: isActive ? 'var(--accent)' : 'transparent',
@@ -286,7 +295,10 @@ export default function ProfilePage() {
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}>
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}
+                  >
                     <AlertCircle size={15} />
                     {error}
                   </div>
@@ -294,11 +306,17 @@ export default function ProfilePage() {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Full Name
                     </label>
                     <div className="relative">
-                      <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <User
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type="text"
@@ -312,11 +330,17 @@ export default function ProfilePage() {
                   </div>
 
                   <div className="sm:col-span-2">
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Email Address
                     </label>
                     <div className="relative">
-                      <Mail size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Mail
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type="email"
@@ -326,15 +350,23 @@ export default function ProfilePage() {
                         style={{ borderColor: 'var(--border)' }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">Email cannot be changed here. Contact your administrator.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Email cannot be changed here. Contact your administrator.
+                    </p>
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Phone Number
                     </label>
                     <div className="relative">
-                      <Phone size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Phone
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type="tel"
@@ -348,11 +380,17 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Job Title
                     </label>
                     <div className="relative">
-                      <Briefcase size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Briefcase
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type="text"
@@ -366,7 +404,10 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Department
                     </label>
                     <input
@@ -381,13 +422,24 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Account Created
                     </label>
                     <input
                       suppressHydrationWarning
                       type="text"
-                      value={user?.created_at ? new Date(user.created_at).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'}
+                      value={
+                        user?.created_at
+                          ? new Date(user.created_at).toLocaleDateString('en-AU', {
+                              day: 'numeric',
+                              month: 'long',
+                              year: 'numeric',
+                            })
+                          : '—'
+                      }
                       disabled
                       className="w-full px-3 py-2.5 text-sm rounded-lg border bg-muted cursor-not-allowed opacity-70"
                       style={{ borderColor: 'var(--border)' }}
@@ -402,17 +454,24 @@ export default function ProfilePage() {
               <div className="card-elevated p-6 space-y-5">
                 <h2 className="text-base font-700 text-foreground">Change Password</h2>
                 <p className="text-sm text-muted-foreground">
-                  Choose a strong password with at least 8 characters, including uppercase letters, numbers, and symbols.
+                  Choose a strong password with at least 8 characters, including uppercase letters,
+                  numbers, and symbols.
                 </p>
 
                 {passwordError && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}>
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}
+                  >
                     <AlertCircle size={15} />
                     {passwordError}
                   </div>
                 )}
                 {passwordSuccess && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}>
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--success-bg)', color: 'var(--success)' }}
+                  >
                     <CheckCircle2 size={15} />
                     Password updated successfully.
                   </div>
@@ -420,11 +479,17 @@ export default function ProfilePage() {
 
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Current Password
                     </label>
                     <div className="relative">
-                      <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Lock
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type={showCurrent ? 'text' : 'password'}
@@ -445,11 +510,17 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       New Password
                     </label>
                     <div className="relative">
-                      <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Lock
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type={showNew ? 'text' : 'password'}
@@ -474,21 +545,36 @@ export default function ProfilePage() {
                             className="h-full rounded-full transition-all duration-300"
                             style={{
                               backgroundColor: strength.color,
-                              width: strength.label === 'Weak' ? '25%' : strength.label === 'Fair' ? '50%' : strength.label === 'Good' ? '75%' : '100%',
+                              width:
+                                strength.label === 'Weak'
+                                  ? '25%'
+                                  : strength.label === 'Fair'
+                                    ? '50%'
+                                    : strength.label === 'Good'
+                                      ? '75%'
+                                      : '100%',
                             }}
                           />
                         </div>
-                        <span className="text-xs font-600" style={{ color: strength.color }}>{strength.label}</span>
+                        <span className="text-xs font-600" style={{ color: strength.color }}>
+                          {strength.label}
+                        </span>
                       </div>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide" style={{ fontSize: '11px' }}>
+                    <label
+                      className="block text-xs font-600 text-muted-foreground mb-1.5 uppercase tracking-wide"
+                      style={{ fontSize: '11px' }}
+                    >
                       Confirm New Password
                     </label>
                     <div className="relative">
-                      <Lock size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Lock
+                        size={15}
+                        className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+                      />
                       <input
                         suppressHydrationWarning
                         type={showConfirm ? 'text' : 'password'}
@@ -496,7 +582,12 @@ export default function ProfilePage() {
                         onChange={(e) => setPasswords((p) => ({ ...p, confirm: e.target.value }))}
                         placeholder="Confirm new password"
                         className="w-full pl-9 pr-10 py-2.5 text-sm rounded-lg border bg-background focus:outline-none focus:ring-2 focus:ring-accent/30 transition-all"
-                        style={{ borderColor: passwords.confirm && passwords.confirm !== passwords.newPass ? 'var(--danger)' : 'var(--border)' }}
+                        style={{
+                          borderColor:
+                            passwords.confirm && passwords.confirm !== passwords.newPass
+                              ? 'var(--danger)'
+                              : 'var(--border)',
+                        }}
                       />
                       <button
                         type="button"
@@ -507,7 +598,9 @@ export default function ProfilePage() {
                       </button>
                     </div>
                     {passwords.confirm && passwords.confirm !== passwords.newPass && (
-                      <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>Passwords do not match</p>
+                      <p className="text-xs mt-1" style={{ color: 'var(--danger)' }}>
+                        Passwords do not match
+                      </p>
                     )}
                   </div>
                 </div>
@@ -536,7 +629,9 @@ export default function ProfilePage() {
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-base font-700 text-foreground">Notification Preferences</h2>
-                    <p className="text-sm text-muted-foreground mt-0.5">Choose how and when you receive alerts</p>
+                    <p className="text-sm text-muted-foreground mt-0.5">
+                      Choose how and when you receive alerts
+                    </p>
                   </div>
                   <button
                     onClick={handleSaveNotifications}
@@ -549,7 +644,10 @@ export default function ProfilePage() {
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm" style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}>
+                  <div
+                    className="flex items-center gap-2 px-3 py-2.5 rounded-lg text-sm"
+                    style={{ backgroundColor: 'var(--danger-bg)', color: 'var(--danger)' }}
+                  >
                     <AlertCircle size={15} />
                     {error}
                   </div>
@@ -560,26 +658,58 @@ export default function ProfilePage() {
                     title: 'Email Notifications',
                     icon: Mail,
                     items: [
-                      { key: 'emailJobs', label: 'Job updates', description: 'New assignments, completions, and cancellations' },
-                      { key: 'emailCompliance', label: 'Compliance alerts', description: 'Expiring licenses, certifications, and insurance' },
-                      { key: 'emailIncidents', label: 'Incident reports', description: 'New incidents and status changes' },
-                      { key: 'emailReports', label: 'Weekly reports', description: 'Automated weekly operations summary' },
+                      {
+                        key: 'emailJobs',
+                        label: 'Job updates',
+                        description: 'New assignments, completions, and cancellations',
+                      },
+                      {
+                        key: 'emailCompliance',
+                        label: 'Compliance alerts',
+                        description: 'Expiring licenses, certifications, and insurance',
+                      },
+                      {
+                        key: 'emailIncidents',
+                        label: 'Incident reports',
+                        description: 'New incidents and status changes',
+                      },
+                      {
+                        key: 'emailReports',
+                        label: 'Weekly reports',
+                        description: 'Automated weekly operations summary',
+                      },
                     ],
                   },
                   {
                     title: 'Push Notifications',
                     icon: Smartphone,
                     items: [
-                      { key: 'pushJobs', label: 'Job updates', description: 'Real-time job status changes' },
-                      { key: 'pushCompliance', label: 'Compliance alerts', description: 'Critical compliance issues requiring immediate action' },
-                      { key: 'pushIncidents', label: 'Incident alerts', description: 'New critical and high severity incidents' },
+                      {
+                        key: 'pushJobs',
+                        label: 'Job updates',
+                        description: 'Real-time job status changes',
+                      },
+                      {
+                        key: 'pushCompliance',
+                        label: 'Compliance alerts',
+                        description: 'Critical compliance issues requiring immediate action',
+                      },
+                      {
+                        key: 'pushIncidents',
+                        label: 'Incident alerts',
+                        description: 'New critical and high severity incidents',
+                      },
                     ],
                   },
                   {
                     title: 'SMS Notifications',
                     icon: Phone,
                     items: [
-                      { key: 'smsIncidents', label: 'Critical incidents', description: 'SMS alerts for critical severity incidents only' },
+                      {
+                        key: 'smsIncidents',
+                        label: 'Critical incidents',
+                        description: 'SMS alerts for critical severity incidents only',
+                      },
                     ],
                   },
                 ].map((group) => (

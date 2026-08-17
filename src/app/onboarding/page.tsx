@@ -3,10 +3,9 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
+import { logger } from '@/lib/logger';
 import { Building2, MapPin, CheckCircle2, ChevronRight, Loader2, Briefcase } from 'lucide-react';
 import AppLogo from '@/components/ui/AppLogo';
-
-
 
 interface OnboardingData {
   companyName: string;
@@ -26,110 +25,281 @@ interface OnboardingData {
 // All 247 industries across 29 sectors
 const industries = [
   // Property & Facilities (28)
-  'Commercial Cleaning', 'Industrial Cleaning', 'Medical / Sterile Cleaning', 'Residential Cleaning',
-  'Facility Management', 'Building Maintenance', 'HVAC Maintenance', 'Electrical Maintenance',
-  'Plumbing Services', 'Pest Control', 'Waste Management', 'Recycling Services',
-  'Grounds Maintenance', 'Window Cleaning', 'Carpet Cleaning', 'Pressure Washing',
-  'Graffiti Removal', 'Restoration Services', 'Flood Remediation', 'Fire Damage Restoration',
-  'Asbestos Removal', 'Mould Remediation', 'Hygiene Services', 'Sanitation Services',
-  'Concierge Services', 'Caretaking', 'Strata Management', 'Property Inspection',
+  'Commercial Cleaning',
+  'Industrial Cleaning',
+  'Medical / Sterile Cleaning',
+  'Residential Cleaning',
+  'Facility Management',
+  'Building Maintenance',
+  'HVAC Maintenance',
+  'Electrical Maintenance',
+  'Plumbing Services',
+  'Pest Control',
+  'Waste Management',
+  'Recycling Services',
+  'Grounds Maintenance',
+  'Window Cleaning',
+  'Carpet Cleaning',
+  'Pressure Washing',
+  'Graffiti Removal',
+  'Restoration Services',
+  'Flood Remediation',
+  'Fire Damage Restoration',
+  'Asbestos Removal',
+  'Mould Remediation',
+  'Hygiene Services',
+  'Sanitation Services',
+  'Concierge Services',
+  'Caretaking',
+  'Strata Management',
+  'Property Inspection',
   // Trades (23)
-  'Electrical Contracting', 'Plumbing Contracting', 'Gas Fitting', 'Air Conditioning Installation',
-  'Refrigeration Services', 'Solar Installation', 'Roofing', 'Tiling',
-  'Painting & Decorating', 'Carpentry', 'Concreting', 'Bricklaying',
-  'Plastering', 'Glazing', 'Flooring Installation', 'Insulation Installation',
-  'Waterproofing', 'Scaffolding', 'Rigging', 'Welding',
-  'Metal Fabrication', 'Locksmithing', 'Lift Maintenance',
+  'Electrical Contracting',
+  'Plumbing Contracting',
+  'Gas Fitting',
+  'Air Conditioning Installation',
+  'Refrigeration Services',
+  'Solar Installation',
+  'Roofing',
+  'Tiling',
+  'Painting & Decorating',
+  'Carpentry',
+  'Concreting',
+  'Bricklaying',
+  'Plastering',
+  'Glazing',
+  'Flooring Installation',
+  'Insulation Installation',
+  'Waterproofing',
+  'Scaffolding',
+  'Rigging',
+  'Welding',
+  'Metal Fabrication',
+  'Locksmithing',
+  'Lift Maintenance',
   // Construction (17)
-  'General Construction', 'Civil Construction', 'Demolition', 'Excavation',
-  'Earthmoving', 'Road Construction', 'Bridge Construction', 'Pipeline Installation',
-  'Structural Engineering', 'Project Management', 'Site Supervision', 'Quantity Surveying',
-  'Building Inspection', 'Surveying', 'Drafting', 'Architecture',
+  'General Construction',
+  'Civil Construction',
+  'Demolition',
+  'Excavation',
+  'Earthmoving',
+  'Road Construction',
+  'Bridge Construction',
+  'Pipeline Installation',
+  'Structural Engineering',
+  'Project Management',
+  'Site Supervision',
+  'Quantity Surveying',
+  'Building Inspection',
+  'Surveying',
+  'Drafting',
+  'Architecture',
   'Interior Design',
   // Security (9)
-  'Security Guarding', 'Mobile Patrol', 'Alarm Monitoring', 'CCTV Installation',
-  'Access Control', 'Crowd Control', 'Cash in Transit', 'Cyber Security',
+  'Security Guarding',
+  'Mobile Patrol',
+  'Alarm Monitoring',
+  'CCTV Installation',
+  'Access Control',
+  'Crowd Control',
+  'Cash in Transit',
+  'Cyber Security',
   'Loss Prevention',
   // Healthcare (15)
-  'Aged Care', 'Disability Support', 'Home Care', 'Community Nursing',
-  'Allied Health', 'Physiotherapy', 'Occupational Therapy', 'Speech Therapy',
-  'Mental Health Support', 'Drug & Alcohol Services', 'Palliative Care', 'Childcare',
-  'Early Childhood Education', 'School Support', 'Medical Transport',
+  'Aged Care',
+  'Disability Support',
+  'Home Care',
+  'Community Nursing',
+  'Allied Health',
+  'Physiotherapy',
+  'Occupational Therapy',
+  'Speech Therapy',
+  'Mental Health Support',
+  'Drug & Alcohol Services',
+  'Palliative Care',
+  'Childcare',
+  'Early Childhood Education',
+  'School Support',
+  'Medical Transport',
   // Hospitality (10)
-  'Hotel Management', 'Restaurant Services', 'Catering', 'Event Catering',
-  'Bar Services', 'Housekeeping', 'Concierge', 'Food Delivery',
-  'Vending Services', 'Coffee Services',
+  'Hotel Management',
+  'Restaurant Services',
+  'Catering',
+  'Event Catering',
+  'Bar Services',
+  'Housekeeping',
+  'Concierge',
+  'Food Delivery',
+  'Vending Services',
+  'Coffee Services',
   // Retail (10)
-  'Retail Merchandising', 'Visual Merchandising', 'Stock Management', 'Retail Cleaning',
-  'Loss Prevention Retail', 'Mystery Shopping', 'Retail Audit', 'Pop-up Retail',
-  'Market Stall Operations', 'Vending Machine Servicing',
+  'Retail Merchandising',
+  'Visual Merchandising',
+  'Stock Management',
+  'Retail Cleaning',
+  'Loss Prevention Retail',
+  'Mystery Shopping',
+  'Retail Audit',
+  'Pop-up Retail',
+  'Market Stall Operations',
+  'Vending Machine Servicing',
   // Logistics (10)
-  'Courier Services', 'Freight Transport', 'Warehousing', 'Pick & Pack',
-  'Last Mile Delivery', 'Cold Chain Logistics', 'Dangerous Goods Transport', 'Removalist Services',
-  'Furniture Delivery', 'Medical Courier',
+  'Courier Services',
+  'Freight Transport',
+  'Warehousing',
+  'Pick & Pack',
+  'Last Mile Delivery',
+  'Cold Chain Logistics',
+  'Dangerous Goods Transport',
+  'Removalist Services',
+  'Furniture Delivery',
+  'Medical Courier',
   // Automotive (9)
-  'Mobile Mechanic', 'Roadside Assistance', 'Fleet Maintenance', 'Tyre Services',
-  'Auto Detailing', 'Windscreen Repair', 'Panel Beating', 'Smash Repairs',
+  'Mobile Mechanic',
+  'Roadside Assistance',
+  'Fleet Maintenance',
+  'Tyre Services',
+  'Auto Detailing',
+  'Windscreen Repair',
+  'Panel Beating',
+  'Smash Repairs',
   'Vehicle Inspection',
   // Agriculture (8)
-  'Crop Management', 'Livestock Management', 'Irrigation Services', 'Pest & Weed Control',
-  'Harvesting', 'Farm Labour', 'Horticulture', 'Viticulture',
+  'Crop Management',
+  'Livestock Management',
+  'Irrigation Services',
+  'Pest & Weed Control',
+  'Harvesting',
+  'Farm Labour',
+  'Horticulture',
+  'Viticulture',
   // Education (6)
-  'Tutoring', 'Training & Assessment', 'Corporate Training', 'First Aid Training',
-  'Safety Training', 'Vocational Education',
+  'Tutoring',
+  'Training & Assessment',
+  'Corporate Training',
+  'First Aid Training',
+  'Safety Training',
+  'Vocational Education',
   // Government (5)
-  'Local Government Services', 'Infrastructure Maintenance', 'Public Space Cleaning', 'Parks & Gardens',
+  'Local Government Services',
+  'Infrastructure Maintenance',
+  'Public Space Cleaning',
+  'Parks & Gardens',
   'Council Compliance',
   // Emergency Services (6)
-  'Fire Protection', 'Fire Suppression Maintenance', 'Emergency Response', 'Hazmat Services',
-  'Search & Rescue Support', 'Ambulance Support Services',
+  'Fire Protection',
+  'Fire Suppression Maintenance',
+  'Emergency Response',
+  'Hazmat Services',
+  'Search & Rescue Support',
+  'Ambulance Support Services',
   // Mining & Resources (6)
-  'Mine Site Services', 'Drilling Support', 'Mine Maintenance', 'Camp Management',
-  'Environmental Monitoring', 'Geotechnical Services',
+  'Mine Site Services',
+  'Drilling Support',
+  'Mine Maintenance',
+  'Camp Management',
+  'Environmental Monitoring',
+  'Geotechnical Services',
   // Manufacturing (8)
-  'Production Line Services', 'Quality Inspection', 'Machine Maintenance', 'Tool & Die',
-  'Assembly Services', 'Packaging Services', 'Forklift Operations', 'Inventory Management',
+  'Production Line Services',
+  'Quality Inspection',
+  'Machine Maintenance',
+  'Tool & Die',
+  'Assembly Services',
+  'Packaging Services',
+  'Forklift Operations',
+  'Inventory Management',
   // Professional Services (6)
-  'IT Field Services', 'Telecommunications', 'Meter Reading', 'Data Collection',
-  'Field Research', 'Audit Services',
+  'IT Field Services',
+  'Telecommunications',
+  'Meter Reading',
+  'Data Collection',
+  'Field Research',
+  'Audit Services',
   // Utilities (6)
-  'Electrical Network Maintenance', 'Gas Network Maintenance', 'Water Network Maintenance', 'Meter Installation',
-  'Smart Grid Services', 'Renewable Energy Maintenance',
+  'Electrical Network Maintenance',
+  'Gas Network Maintenance',
+  'Water Network Maintenance',
+  'Meter Installation',
+  'Smart Grid Services',
+  'Renewable Energy Maintenance',
   // Recreation (6)
-  'Sports Ground Maintenance', 'Pool Maintenance', 'Gym Equipment Maintenance', 'Event Setup',
-  'Amusement Ride Inspection', 'Playground Maintenance',
+  'Sports Ground Maintenance',
+  'Pool Maintenance',
+  'Gym Equipment Maintenance',
+  'Event Setup',
+  'Amusement Ride Inspection',
+  'Playground Maintenance',
   // Animal Services (5)
-  'Veterinary Support', 'Animal Control', 'Pet Grooming', 'Dog Walking',
+  'Veterinary Support',
+  'Animal Control',
+  'Pet Grooming',
+  'Dog Walking',
   'Animal Shelter Services',
   // Personal Services (5)
-  'Mobile Hairdressing', 'Mobile Beauty', 'Personal Training', 'Massage Therapy',
+  'Mobile Hairdressing',
+  'Mobile Beauty',
+  'Personal Training',
+  'Massage Therapy',
   'Home Cleaning',
   // Marine (5)
-  'Boat Maintenance', 'Marine Cleaning', 'Dock Services', 'Marine Inspection',
+  'Boat Maintenance',
+  'Marine Cleaning',
+  'Dock Services',
+  'Marine Inspection',
   'Underwater Services',
   // Aviation (4)
-  'Aircraft Maintenance', 'Ground Handling', 'Airport Cleaning', 'Baggage Services',
+  'Aircraft Maintenance',
+  'Ground Handling',
+  'Airport Cleaning',
+  'Baggage Services',
   // Religious & Community (5)
-  'Community Services', 'Volunteer Coordination', 'Church Maintenance', 'Charity Operations',
+  'Community Services',
+  'Volunteer Coordination',
+  'Church Maintenance',
+  'Charity Operations',
   'Social Enterprise Services',
   // Event Services (6)
-  'Event Management', 'Event Cleaning', 'Event Security', 'AV & Technical Services',
-  'Staging & Rigging', 'Event Staffing',
+  'Event Management',
+  'Event Cleaning',
+  'Event Security',
+  'AV & Technical Services',
+  'Staging & Rigging',
+  'Event Staffing',
   // Franchise Operations (5)
-  'Franchise Cleaning', 'Franchise Maintenance', 'Franchise Inspection', 'Franchise Training',
+  'Franchise Cleaning',
+  'Franchise Maintenance',
+  'Franchise Inspection',
+  'Franchise Training',
   'Franchise Compliance',
   // Home Services (6)
-  'Handyman Services', 'Garden Maintenance', 'Pool Cleaning', 'Gutter Cleaning',
-  'Home Inspection', 'Smart Home Installation',
+  'Handyman Services',
+  'Garden Maintenance',
+  'Pool Cleaning',
+  'Gutter Cleaning',
+  'Home Inspection',
+  'Smart Home Installation',
   // Inspection Services (7)
-  'Building Inspection', 'Pre-Purchase Inspection', 'Safety Inspection', 'Compliance Audit',
-  'Environmental Audit', 'Food Safety Inspection', 'Equipment Inspection',
+  'Building Inspection',
+  'Pre-Purchase Inspection',
+  'Safety Inspection',
+  'Compliance Audit',
+  'Environmental Audit',
+  'Food Safety Inspection',
+  'Equipment Inspection',
   // Tourism (5)
-  'Tour Operations', 'Tourism Transport', 'Accommodation Services', 'Tourism Cleaning',
+  'Tour Operations',
+  'Tourism Transport',
+  'Accommodation Services',
+  'Tourism Cleaning',
   'Visitor Services',
   // Specialist Services (6)
-  'Forensic Cleaning', 'Trauma Cleaning', 'Biohazard Cleaning', 'High-Rise Cleaning',
-  'Rope Access Services', 'Confined Space Services',
+  'Forensic Cleaning',
+  'Trauma Cleaning',
+  'Biohazard Cleaning',
+  'High-Rise Cleaning',
+  'Rope Access Services',
+  'Confined Space Services',
   // Other
   'Other Field Services',
 ];
@@ -154,6 +324,7 @@ export default function OnboardingPage() {
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const [industrySearch, setIndustrySearch] = useState('');
   const [data, setData] = useState<OnboardingData>({
     companyName: '',
@@ -177,17 +348,31 @@ export default function OnboardingPage() {
     ? industries.filter((ind) => ind.toLowerCase().includes(industrySearch.toLowerCase()))
     : industries;
 
+  /**
+   * DEFECT REMEDIATED (P1 — "skip" produced a permanently broken account):
+   *
+   *   Skipping set `onboarding_complete: true` while creating NO company and NO
+   *   user_roles row. The user was then sent to the dashboard with no tenant at
+   *   all: every tenant-scoped query returned nothing, RBAC (correctly) failed
+   *   closed to no permissions, and — because onboarding was marked complete —
+   *   AppLayout would never route them back here to finish. The product was
+   *   permanently empty for them, with no route to recovery inside the
+   *   application.
+   *
+   *   Skipping now records only that the user postponed setup. It does NOT
+   *   claim onboarding is complete, so they are returned here until an
+   *   organisation genuinely exists.
+   */
   const handleSkip = async () => {
     try {
       const supabase = createClient();
       await supabase.auth.updateUser({
         data: {
-          onboarding_complete: true,
           onboarding_skipped: true,
         },
       });
-    } catch {
-      // Skip onboarding error — redirect to dashboard regardless
+    } catch (err) {
+      logger.warn('onboarding', 'Could not record onboarding skip', { userId: user?.id }, err);
     }
     router.push('/dashboard');
   };
@@ -201,6 +386,7 @@ export default function OnboardingPage() {
 
   const handleFinish = async () => {
     setSaving(true);
+    setSaveError(null);
     try {
       const supabase = createClient();
       const { data: company, error: companyError } = await supabase
@@ -224,20 +410,72 @@ export default function OnboardingPage() {
 
       if (companyError) throw companyError;
 
+      /**
+       * DEFECT REMEDIATED (P0 — tenants created with no authoritative role):
+       *
+       *   The `user_roles` upsert result was DISCARDED. Migration
+       *   20260817001000 records that the insert was in fact being refused:
+       *   `user_roles_insert` required `is_company_admin()`, which requires a
+       *   user_roles row — the very row onboarding was trying to create. So a
+       *   brand-new user created their company, the role insert failed, the
+       *   error was thrown away, and onboarding continued to the success screen
+       *   having marked `onboarding_complete: true`.
+       *
+       *   The tenant then existed with NO authoritative membership. Every RLS
+       *   policy resolved to no tenant, so the product was empty, and the
+       *   application fell back to client-writable metadata to paper over it —
+       *   which is how metadata came to be treated as tenant authority in the
+       *   first place.
+       *
+       *   The database side is fixed (the bootstrap path lets a company OWNER
+       *   claim their own admin role, once). The application side is fixed
+       *   here: the role row is now REQUIRED, its error is checked, and its
+       *   existence is verified before onboarding is allowed to report success.
+       */
+      const { error: roleError } = await supabase.from('user_roles').upsert(
+        {
+          user_id: user?.id,
+          company_id: company.id,
+          role: 'admin',
+        },
+        { onConflict: 'user_id,company_id' }
+      );
+
+      if (roleError) throw roleError;
+
+      // Verify rather than assume: a silently-empty result here is exactly the
+      // state that produced a tenant with no authority.
+      const { data: confirmedRole, error: confirmError } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user?.id ?? '')
+        .eq('company_id', company.id)
+        .maybeSingle();
+
+      if (confirmError || confirmedRole?.role !== 'admin') {
+        throw new Error(
+          'Your organisation was created but your administrator access could not be confirmed.'
+        );
+      }
+
+      /**
+       * `role` is NO LONGER written to user_metadata. Nothing in the platform
+       * treats metadata as authority any more (see AuthContext, RBACContext and
+       * migrations 20260817000000–20260817002000), and writing a role there
+       * invited exactly the confusion that made it authority to begin with.
+       *
+       * `company_id` is still written, but only as a SELECTOR: both
+       * `get_my_company_id()` and AuthContext honour it solely when
+       * public.user_roles proves membership. It is written only after that
+       * membership has been confirmed above.
+       */
       await supabase.auth.updateUser({
         data: {
           company_id: company.id,
           company_name: data.companyName,
-          role: 'admin',
           onboarding_complete: true,
         },
       });
-
-      await supabase.from('user_roles').upsert({
-        user_id: user?.id,
-        company_id: company.id,
-        role: 'admin',
-      }, { onConflict: 'user_id,company_id' });
 
       await supabase.from('activity_log').insert({
         user_id: user?.id,
@@ -255,8 +493,16 @@ export default function OnboardingPage() {
       await supabase.auth.refreshSession();
 
       setStep(4);
-    } catch {
-      // Onboarding save error — user can retry
+    } catch (err) {
+      // DEFECT REMEDIATED: the catch block was empty. On failure the spinner
+      // simply stopped and the user was given no indication that anything had
+      // gone wrong, on the one screen where failure leaves the account unusable.
+      logger.error('onboarding', 'Failed to complete onboarding', { userId: user?.id }, err);
+      setSaveError(
+        err instanceof Error && err.message
+          ? err.message
+          : 'We could not finish setting up your organisation. Please try again.'
+      );
     } finally {
       setSaving(false);
     }
@@ -286,13 +532,20 @@ export default function OnboardingPage() {
                   <div
                     className="w-10 h-10 rounded-full flex items-center justify-center transition-all"
                     style={{
-                      backgroundColor: isDone ? 'var(--success)' : isActive ? 'var(--accent)' : 'var(--secondary)',
+                      backgroundColor: isDone
+                        ? 'var(--success)'
+                        : isActive
+                          ? 'var(--accent)'
+                          : 'var(--secondary)',
                       color: isDone || isActive ? 'white' : 'var(--muted-foreground)',
                     }}
                   >
                     {isDone ? <CheckCircle2 size={18} /> : <StepIcon size={18} />}
                   </div>
-                  <span className="text-xs font-500" style={{ color: isActive ? 'var(--accent)' : 'var(--muted-foreground)' }}>
+                  <span
+                    className="text-xs font-500"
+                    style={{ color: isActive ? 'var(--accent)' : 'var(--muted-foreground)' }}
+                  >
                     {s.label}
                   </span>
                 </div>
@@ -313,7 +566,9 @@ export default function OnboardingPage() {
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h2 className="text-xl font-700 text-foreground">Tell us about your company</h2>
-                <p className="text-sm text-muted-foreground mt-1">This helps us configure your workspace correctly</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  This helps us configure your workspace correctly
+                </p>
               </div>
               <div>
                 <label className={labelClass}>Company Name *</label>
@@ -340,7 +595,12 @@ export default function OnboardingPage() {
                 />
               </div>
               <div>
-                <label className={labelClass}>Industry * <span className="text-muted-foreground font-400 text-xs">(247 industries across 29 sectors)</span></label>
+                <label className={labelClass}>
+                  Industry *{' '}
+                  <span className="text-muted-foreground font-400 text-xs">
+                    (247 industries across 29 sectors)
+                  </span>
+                </label>
                 {/* Search */}
                 <input
                   suppressHydrationWarning
@@ -351,13 +611,24 @@ export default function OnboardingPage() {
                   onChange={(e) => setIndustrySearch(e.target.value)}
                 />
                 {data.industry && (
-                  <div className="mb-2 px-3 py-2 rounded-lg text-sm font-600 text-accent" style={{ backgroundColor: 'rgba(37,99,235,0.08)', border: '1px solid var(--accent)' }}>
+                  <div
+                    className="mb-2 px-3 py-2 rounded-lg text-sm font-600 text-accent"
+                    style={{
+                      backgroundColor: 'rgba(37,99,235,0.08)',
+                      border: '1px solid var(--accent)',
+                    }}
+                  >
                     ✓ Selected: {data.industry}
                   </div>
                 )}
-                <div className="max-h-48 overflow-y-auto rounded-xl border" style={{ borderColor: 'var(--border)' }}>
+                <div
+                  className="max-h-48 overflow-y-auto rounded-xl border"
+                  style={{ borderColor: 'var(--border)' }}
+                >
                   {filteredIndustries.length === 0 ? (
-                    <p className="text-sm text-muted-foreground p-3 text-center">No industries match your search</p>
+                    <p className="text-sm text-muted-foreground p-3 text-center">
+                      No industries match your search
+                    </p>
                   ) : (
                     <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                       {filteredIndustries.map((ind) => (
@@ -367,11 +638,13 @@ export default function OnboardingPage() {
                           onClick={() => update('industry', ind)}
                           className="w-full px-3 py-2.5 text-xs font-500 text-left transition-all hover:bg-secondary"
                           style={{
-                            backgroundColor: data.industry === ind ? 'rgba(37,99,235,0.08)' : undefined,
+                            backgroundColor:
+                              data.industry === ind ? 'rgba(37,99,235,0.08)' : undefined,
                             color: data.industry === ind ? 'var(--accent)' : 'var(--foreground)',
                           }}
                         >
-                          {data.industry === ind && '✓ '}{ind}
+                          {data.industry === ind && '✓ '}
+                          {ind}
                         </button>
                       ))}
                     </div>
@@ -431,7 +704,9 @@ export default function OnboardingPage() {
                   onChange={(e) => update('state', e.target.value)}
                 >
                   {['NSW', 'VIC', 'QLD', 'WA', 'SA', 'TAS', 'ACT', 'NT'].map((s) => (
-                    <option key={s} value={s}>{s}</option>
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -466,7 +741,9 @@ export default function OnboardingPage() {
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h2 className="text-xl font-700 text-foreground">Your operations</h2>
-                <p className="text-sm text-muted-foreground mt-1">Help us set up the right tools for your team</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Help us set up the right tools for your team
+                </p>
               </div>
               <div>
                 <label className={labelClass}>Company Size *</label>
@@ -478,9 +755,12 @@ export default function OnboardingPage() {
                       onClick={() => update('companySize', cs.value)}
                       className="w-full px-4 py-3 text-sm font-600 rounded-xl border text-left transition-all flex items-center justify-between"
                       style={{
-                        borderColor: data.companySize === cs.value ? 'var(--accent)' : 'var(--border)',
-                        backgroundColor: data.companySize === cs.value ? 'rgba(37,99,235,0.08)' : 'var(--card)',
-                        color: data.companySize === cs.value ? 'var(--accent)' : 'var(--foreground)',
+                        borderColor:
+                          data.companySize === cs.value ? 'var(--accent)' : 'var(--border)',
+                        backgroundColor:
+                          data.companySize === cs.value ? 'rgba(37,99,235,0.08)' : 'var(--card)',
+                        color:
+                          data.companySize === cs.value ? 'var(--accent)' : 'var(--foreground)',
                       }}
                     >
                       <span>{cs.label}</span>
@@ -510,7 +790,8 @@ export default function OnboardingPage() {
               </div>
               <h2 className="text-xl font-700 text-foreground">You&apos;re all set!</h2>
               <p className="text-sm text-muted-foreground">
-                Your workspace for <strong>{data.companyName}</strong> is ready. Let&apos;s get started.
+                Your workspace for <strong>{data.companyName}</strong> is ready. Let&apos;s get
+                started.
               </p>
               <div className="grid grid-cols-3 gap-3 pt-2">
                 {[
@@ -538,28 +819,48 @@ export default function OnboardingPage() {
             </div>
           )}
 
+          {/* Setup failure — previously swallowed silently */}
+          {saveError && step < 4 && (
+            <div
+              className="mt-6 p-3 rounded-xl border text-sm"
+              role="alert"
+              style={{
+                backgroundColor: 'var(--danger-bg, rgba(239,68,68,0.1))',
+                borderColor: 'var(--danger)',
+                color: 'var(--danger)',
+              }}
+            >
+              {saveError}
+            </div>
+          )}
+
           {/* Navigation */}
           {step < 4 && (
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-border">
               <button
-                onClick={() => step > 1 ? setStep(step - 1) : handleSkip()}
+                onClick={() => (step > 1 ? setStep(step - 1) : handleSkip())}
                 className="px-4 py-2 rounded-xl text-sm font-600 border transition-all hover:bg-secondary"
                 style={{ borderColor: 'var(--border)', color: 'var(--foreground)' }}
               >
                 {step === 1 ? 'Skip for now' : 'Back'}
               </button>
               <button
-                onClick={() => step < 3 ? setStep(step + 1) : handleFinish()}
+                onClick={() => (step < 3 ? setStep(step + 1) : handleFinish())}
                 disabled={!canProceed() || saving}
                 className="flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-700 text-white transition-all hover:opacity-90 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                 style={{ backgroundColor: 'var(--accent)' }}
               >
                 {saving ? (
-                  <><Loader2 size={16} className="animate-spin" /> Setting up…</>
+                  <>
+                    <Loader2 size={16} className="animate-spin" /> Setting up…
+                  </>
                 ) : step === 3 ? (
                   'Finish Setup'
                 ) : (
-                  <><span>Continue</span><ChevronRight size={16} /></>
+                  <>
+                    <span>Continue</span>
+                    <ChevronRight size={16} />
+                  </>
                 )}
               </button>
             </div>

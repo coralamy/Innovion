@@ -14,21 +14,21 @@
  */
 
 // ─── Colour helpers ───────────────────────────────────────────────────────────
-const GREEN  = '\x1b[32m';
-const RED    = '\x1b[31m';
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
-const CYAN   = '\x1b[36m';
-const BLUE   = '\x1b[34m';
-const BOLD   = '\x1b[1m';
-const RESET  = '\x1b[0m';
-const DIM    = '\x1b[2m';
+const CYAN = '\x1b[36m';
+const BLUE = '\x1b[34m';
+const BOLD = '\x1b[1m';
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
 
-const passLog  = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
-const failLog  = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
-const extLog   = (msg: string) => console.log(`  ${YELLOW}⚑${RESET}  ${msg}`);
-const infoLog  = (msg: string) => console.log(`  ${CYAN}ℹ${RESET}  ${msg}`);
-const title    = (msg: string) => console.log(`\n${BOLD}${CYAN}${msg}${RESET}`);
-const divider  = ()            => console.log(`${DIM}${'─'.repeat(72)}${RESET}`);
+const passLog = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
+const failLog = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
+const extLog = (msg: string) => console.log(`  ${YELLOW}⚑${RESET}  ${msg}`);
+const infoLog = (msg: string) => console.log(`  ${CYAN}ℹ${RESET}  ${msg}`);
+const title = (msg: string) => console.log(`\n${BOLD}${CYAN}${msg}${RESET}`);
+const divider = () => console.log(`${DIM}${'─'.repeat(72)}${RESET}`);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type MobileCheckStatus = 'PASS' | 'FAIL' | 'EXTERNAL_CREDENTIAL_REQUIRED' | 'PENDING_DEVICE';
@@ -54,7 +54,15 @@ function mobileCheck(
   credentialRequired?: string,
   credentialLocation?: string
 ): void {
-  results.push({ id, category: currentCategory, item, status, detail, credentialRequired, credentialLocation });
+  results.push({
+    id,
+    category: currentCategory,
+    item,
+    status,
+    detail,
+    credentialRequired,
+    credentialLocation,
+  });
 
   switch (status) {
     case 'PASS':
@@ -67,11 +75,14 @@ function mobileCheck(
       break;
     case 'EXTERNAL_CREDENTIAL_REQUIRED':
       extLog(`[${id}] ${item}`);
-      if (credentialRequired) console.log(`       ${YELLOW}CREDENTIAL REQUIRED: ${credentialRequired}${RESET}`);
+      if (credentialRequired)
+        console.log(`       ${YELLOW}CREDENTIAL REQUIRED: ${credentialRequired}${RESET}`);
       if (credentialLocation) console.log(`       ${DIM}WHERE: ${credentialLocation}${RESET}`);
       break;
     case 'PENDING_DEVICE':
-      console.log(`  ${BLUE}◈${RESET}  [${id}] ${item} ${DIM}— requires physical device${RESET}`);
+      console.log(
+        `  ${BLUE}◈${RESET}  [${id}] ${item} ${DIM}— requires physical device${RESET}`
+      );
       break;
   }
 }
@@ -143,14 +154,18 @@ function runApiEndpointChecks(): void {
     'MOB-API-01',
     'NEXT_PUBLIC_SUPABASE_URL is configured',
     supabaseUrl && !supabaseUrl.includes('placeholder') ? 'PASS' : 'FAIL',
-    supabaseUrl ? `Configured: ${supabaseUrl.substring(0, 40)}...` : 'NEXT_PUBLIC_SUPABASE_URL is not set'
+    supabaseUrl
+      ? `Configured: ${supabaseUrl.substring(0, 40)}...`
+      : 'NEXT_PUBLIC_SUPABASE_URL is not set'
   );
 
   mobileCheck(
     'MOB-API-02',
     'NEXT_PUBLIC_SUPABASE_ANON_KEY is configured',
     supabaseKey && supabaseKey.split('.').length === 3 ? 'PASS' : 'FAIL',
-    supabaseKey ? 'Anon key is a valid JWT (3 segments)' : 'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set or invalid'
+    supabaseKey
+      ? 'Anon key is a valid JWT (3 segments)'
+      : 'NEXT_PUBLIC_SUPABASE_ANON_KEY is not set or invalid'
   );
 
   mobileCheck(
@@ -199,7 +214,7 @@ function runSecureStorageChecks(): void {
     'MOB-SEC-04',
     'Provider integration secrets encrypted at rest (pgcrypto)',
     'PASS',
-    'encrypt_provider_config() RPC function uses pgcrypto AES encryption. Production encryption key must be set via: ALTER DATABASE SET app.settings.encryption_key = \'<production-key>\';'
+    "encrypt_provider_config() RPC function uses pgcrypto AES encryption. Production encryption key must be set via: ALTER DATABASE SET app.settings.encryption_key = '<production-key>';"
   );
 
   mobileCheck(
@@ -208,7 +223,7 @@ function runSecureStorageChecks(): void {
     'EXTERNAL_CREDENTIAL_REQUIRED',
     undefined,
     'A strong random encryption key (minimum 32 characters) for pgcrypto AES encryption of provider integration secrets',
-    'Supabase Dashboard → Settings → Database → Run: ALTER DATABASE postgres SET app.settings.encryption_key = \'<your-strong-random-key>\'; — NEVER commit this key to source control.'
+    "Supabase Dashboard → Settings → Database → Run: ALTER DATABASE postgres SET app.settings.encryption_key = '<your-strong-random-key>'; — NEVER commit this key to source control."
   );
 
   mobileCheck(
@@ -405,7 +420,9 @@ function runVersioningChecks(): void {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const pkg = require('../package.json') as { version?: string };
     packageVersion = pkg.version ?? 'unknown';
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
 
   mobileCheck(
     'MOB-VER-01',
@@ -424,8 +441,10 @@ function runVersioningChecks(): void {
   mobileCheck(
     'MOB-VER-03',
     'Google Analytics Measurement ID',
-    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && !process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID.includes('your-')
-      ? 'PASS' :'EXTERNAL_CREDENTIAL_REQUIRED',
+    process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID &&
+      !process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID.includes('your-')
+      ? 'PASS'
+      : 'EXTERNAL_CREDENTIAL_REQUIRED',
     undefined,
     'Google Analytics 4 Measurement ID (format: G-XXXXXXXXXX)',
     'analytics.google.com → Admin → Data Streams → Web → Measurement ID. Add to .env as NEXT_PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX'
@@ -434,11 +453,11 @@ function runVersioningChecks(): void {
 
 // ─── Summary ──────────────────────────────────────────────────────────────────
 function printMobileSummary(): void {
-  const passed    = results.filter((r) => r.status === 'PASS').length;
-  const failed    = results.filter((r) => r.status === 'FAIL').length;
-  const external  = results.filter((r) => r.status === 'EXTERNAL_CREDENTIAL_REQUIRED').length;
-  const pending   = results.filter((r) => r.status === 'PENDING_DEVICE').length;
-  const total     = results.length;
+  const passed = results.filter((r) => r.status === 'PASS').length;
+  const failed = results.filter((r) => r.status === 'FAIL').length;
+  const external = results.filter((r) => r.status === 'EXTERNAL_CREDENTIAL_REQUIRED').length;
+  const pending = results.filter((r) => r.status === 'PENDING_DEVICE').length;
+  const total = results.length;
 
   console.log('\n');
   divider();
@@ -457,22 +476,28 @@ function printMobileSummary(): void {
       .filter((r) => r.status === 'EXTERNAL_CREDENTIAL_REQUIRED')
       .forEach((r) => {
         console.log(`\n  ${YELLOW}⚑${RESET} [${r.id}] ${r.item}`);
-        if (r.credentialRequired) console.log(`     ${BOLD}Required:${RESET} ${r.credentialRequired}`);
-        if (r.credentialLocation) console.log(`     ${DIM}Where:    ${r.credentialLocation}${RESET}`);
+        if (r.credentialRequired)
+          console.log(`     ${BOLD}Required:${RESET} ${r.credentialRequired}`);
+        if (r.credentialLocation)
+          console.log(`     ${DIM}Where:    ${r.credentialLocation}${RESET}`);
       });
   }
 
   if (failed > 0) {
     console.log(`\n${BOLD}${RED}FAILURES:${RESET}`);
-    results.filter((r) => r.status === 'FAIL').forEach((r) => {
-      console.log(`  ${RED}✘${RESET} [${r.id}] ${r.item}`);
-      if (r.detail) console.log(`       ${DIM}${r.detail}${RESET}`);
-    });
+    results
+      .filter((r) => r.status === 'FAIL')
+      .forEach((r) => {
+        console.log(`  ${RED}✘${RESET} [${r.id}] ${r.item}`);
+        if (r.detail) console.log(`       ${DIM}${r.detail}${RESET}`);
+      });
   }
 
   divider();
   if (failed === 0) {
-    console.log(`\n  ${GREEN}${BOLD}✔ ALL VALIDATABLE ITEMS PASS — EXTERNAL CREDENTIALS DOCUMENTED${RESET}\n`);
+    console.log(
+      `\n  ${GREEN}${BOLD}✔ ALL VALIDATABLE ITEMS PASS — EXTERNAL CREDENTIALS DOCUMENTED${RESET}\n`
+    );
   } else {
     console.log(`\n  ${RED}${BOLD}✘ ${failed} ITEM(S) FAILED — REVIEW REQUIRED${RESET}\n`);
   }
@@ -480,9 +505,15 @@ function printMobileSummary(): void {
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 function main(): void {
-  console.log(`\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}`);
-  console.log(`${BOLD}${CYAN}║  INNOVION MOBILE PRODUCTION READINESS — PILOT READINESS STEP 5      ║${RESET}`);
-  console.log(`${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}`);
+  console.log(
+    `\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}`
+  );
+  console.log(
+    `${BOLD}${CYAN}║  INNOVION MOBILE PRODUCTION READINESS — PILOT READINESS STEP 5      ║${RESET}`
+  );
+  console.log(
+    `${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}`
+  );
 
   runBuildConfigChecks();
   runApiEndpointChecks();
@@ -500,3 +531,12 @@ function main(): void {
 }
 
 main();
+
+// This file is a standalone CLI script. The empty export makes it a MODULE
+// rather than a global script: without it TypeScript places every top-level
+// binding in the global scope, and the six scripts in this directory then
+// collide on shared names (GREEN, RED, results, title, BASE_URL, ...),
+// producing dozens of spurious TS2451/TS6200/TS2393 errors. That noise was a
+// significant reason 	ype-check was never green and was suppressed at build
+// time via next.config.mjs.
+export {};

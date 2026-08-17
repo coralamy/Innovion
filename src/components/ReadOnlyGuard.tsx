@@ -42,7 +42,11 @@ export function ReadOnlyBanner({ className }: ReadOnlyBannerProps) {
   return (
     <div
       className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-500 ${className ?? ''}`}
-      style={{ backgroundColor: 'rgba(139,92,246,0.1)', color: '#8B5CF6', border: '1px solid rgba(139,92,246,0.2)' }}
+      style={{
+        backgroundColor: 'rgba(139,92,246,0.1)',
+        color: '#8B5CF6',
+        border: '1px solid rgba(139,92,246,0.2)',
+      }}
     >
       <Lock size={16} />
       <span>

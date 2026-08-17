@@ -57,7 +57,9 @@ function MarketingNav() {
   }, []);
 
   // Close mobile menu on route change
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   const isActive = (href: string) => pathname === href;
 
@@ -68,7 +70,8 @@ function MarketingNav() {
           scrolled
             ? 'bg-white/96 backdrop-blur-xl shadow-[0_1px_0_rgba(0,0,0,0.06)] border-b border-slate-100/80'
             : isHome
-            ? 'bg-transparent' :'bg-[#0F1C2E]/95 backdrop-blur-xl'
+              ? 'bg-transparent'
+              : 'bg-[#0F1C2E]/95 backdrop-blur-xl'
         }`}
       >
         {/* Scroll progress bar */}
@@ -84,13 +87,11 @@ function MarketingNav() {
         <div className="max-w-7xl mx-auto px-5 lg:px-8">
           <div className="flex items-center justify-between h-[60px] lg:h-[68px]">
             {/* Logo lockup */}
-            <Link href="/marketing" className="flex-shrink-0 transition-opacity duration-150 hover:opacity-80">
-              <AppLogo
-                variant="full"
-                size={32}
-                darkBg={!scrolled}
-                showWordmark={true}
-              />
+            <Link
+              href="/marketing"
+              className="flex-shrink-0 transition-opacity duration-150 hover:opacity-80"
+            >
+              <AppLogo variant="full" size={32} darkBg={!scrolled} showWordmark={true} />
             </Link>
 
             {/* Desktop nav */}
@@ -105,8 +106,8 @@ function MarketingNav() {
                         ? 'text-[#1E3A5F] bg-slate-50'
                         : 'text-white bg-white/12'
                       : scrolled
-                      ? 'text-slate-500 hover:text-[#1E3A5F] hover:bg-slate-50'
-                      : 'text-white/75 hover:text-white hover:bg-white/10'
+                        ? 'text-slate-500 hover:text-[#1E3A5F] hover:bg-slate-50'
+                        : 'text-white/75 hover:text-white hover:bg-white/10'
                   }`}
                 >
                   {link.label}
@@ -149,11 +150,26 @@ function MarketingNav() {
               aria-label="Toggle menu"
               aria-expanded={mobileOpen}
             >
-              <svg className="w-5 h-5 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg
+                className="w-5 h-5 transition-transform duration-200"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
                 {mobileOpen ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4 6h16M4 12h16M4 18h16"
+                  />
                 )}
               </svg>
             </button>
@@ -230,7 +246,12 @@ function MarketingFooter() {
             >
               Start Free Trial
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 8l4 4m0 0l-4 4m4-4H3"
+                />
               </svg>
             </Link>
           </div>
@@ -241,7 +262,10 @@ function MarketingFooter() {
             <ul className="space-y-2.5">
               {FOOTER_PLATFORM.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-slate-500 hover:text-slate-200 transition-colors animated-underline">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-slate-500 hover:text-slate-200 transition-colors animated-underline"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -255,7 +279,10 @@ function MarketingFooter() {
             <ul className="space-y-2.5">
               {FOOTER_COMPANY.map((link) => (
                 <li key={link.href}>
-                  <Link href={link.href} className="text-sm text-slate-500 hover:text-slate-200 transition-colors animated-underline">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-slate-500 hover:text-slate-200 transition-colors animated-underline"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -265,7 +292,9 @@ function MarketingFooter() {
 
           {/* Coralamy Group */}
           <div className="lg:col-span-3 xl:col-span-3">
-            <h4 className="text-white text-xs font-700 mb-4 tracking-widest uppercase">Coralamy Group</h4>
+            <h4 className="text-white text-xs font-700 mb-4 tracking-widest uppercase">
+              Coralamy Group
+            </h4>
             <ul className="space-y-2.5">
               {CORALAMY_LINKS.map((link) => (
                 <li key={link.href}>
@@ -289,8 +318,18 @@ function MarketingFooter() {
             © {new Date().getFullYear()} {BRAND_IDENTITY.copyright}
           </p>
           <div className="flex items-center gap-4">
-            <Link href="/marketing/privacy" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">Privacy</Link>
-            <Link href="/marketing/terms" className="text-xs text-slate-600 hover:text-slate-400 transition-colors">Terms</Link>
+            <Link
+              href="/marketing/privacy"
+              className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            >
+              Privacy
+            </Link>
+            <Link
+              href="/marketing/terms"
+              className="text-xs text-slate-600 hover:text-slate-400 transition-colors"
+            >
+              Terms
+            </Link>
           </div>
         </div>
       </div>
@@ -302,9 +341,7 @@ export default function MarketingLayout({ children }: { children: React.ReactNod
   return (
     <div className="min-h-screen flex flex-col">
       <MarketingNav />
-      <main className="flex-1">
-        {children}
-      </main>
+      <main className="flex-1">{children}</main>
       <MarketingFooter />
       <CookieConsentBanner />
     </div>

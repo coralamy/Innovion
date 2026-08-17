@@ -36,7 +36,7 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
         page: this.props.pageName ?? 'unknown',
         componentStack: info.componentStack?.slice(0, 500) ?? '',
       },
-      error,
+      error
     );
   }
 
@@ -45,18 +45,24 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
       if (this.props.fallback) return this.props.fallback;
       return (
         <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-          <div className="w-14 h-14 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: 'var(--danger-bg)' }}>
+          <div
+            className="w-14 h-14 rounded-full flex items-center justify-center mb-4"
+            style={{ backgroundColor: 'var(--danger-bg)' }}
+          >
             <AlertTriangle size={24} style={{ color: 'var(--danger)' }} />
           </div>
           <h2 className="text-lg font-700 text-foreground">Something went wrong</h2>
           <p className="text-sm text-muted-foreground mt-2 max-w-sm">
             {this.props.pageName
               ? `The ${this.props.pageName} page encountered an error.`
-              : 'This page encountered an unexpected error.'}
-            {' '}Please try refreshing.
+              : 'This page encountered an unexpected error.'}{' '}
+            Please try refreshing.
           </p>
           {this.state.error && (
-            <p className="text-xs text-muted-foreground mt-2 font-mono px-4 py-2 rounded-lg max-w-sm truncate" style={{ backgroundColor: 'var(--secondary)' }}>
+            <p
+              className="text-xs text-muted-foreground mt-2 font-mono px-4 py-2 rounded-lg max-w-sm truncate"
+              style={{ backgroundColor: 'var(--secondary)' }}
+            >
               {this.state.error.message}
             </p>
           )}
@@ -66,7 +72,10 @@ export class ErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBoun
             </p>
           )}
           <button
-            onClick={() => { this.setState({ hasError: false, error: null, errorId: null }); window.location.reload(); }}
+            onClick={() => {
+              this.setState({ hasError: false, error: null, errorId: null });
+              window.location.reload();
+            }}
             className="mt-4 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-600 text-white transition-all hover:opacity-90"
             style={{ backgroundColor: 'var(--accent)' }}
           >

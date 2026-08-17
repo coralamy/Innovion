@@ -3,8 +3,32 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { createClient } from '@/lib/supabase/client';
-import { Download, TrendingUp, TrendingDown, DollarSign, Briefcase, Users, Clock, CheckCircle2, AlertTriangle, FileText } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import {
+  Download,
+  TrendingUp,
+  TrendingDown,
+  DollarSign,
+  Briefcase,
+  Users,
+  Clock,
+  CheckCircle2,
+  AlertTriangle,
+  FileText,
+} from 'lucide-react';
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from 'recharts';
 
 interface KPI {
   label: string;
@@ -33,15 +57,35 @@ interface ServiceBreakdownItem {
   color: string;
 }
 
-const SERVICE_COLORS = ['#2563EB', '#10B981', '#8B5CF6', '#F59E0B', '#EF4444', '#06B6D4', '#84CC16', '#F97316', '#94A3B8'];
+const SERVICE_COLORS = [
+  '#2563EB',
+  '#10B981',
+  '#8B5CF6',
+  '#F59E0B',
+  '#EF4444',
+  '#06B6D4',
+  '#84CC16',
+  '#F97316',
+  '#94A3B8',
+];
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string }) => {
+const CustomTooltip = ({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { name: string; value: number; color: string }[];
+  label?: string;
+}) => {
   if (active && payload && payload.length) {
     return (
       <div className="card-elevated p-3 text-xs shadow-lg">
         <p className="font-700 text-foreground mb-1">{label}</p>
         {payload.map((p) => (
-          <p key={p.name} style={{ color: p.color }}>{p.name}: <span className="font-600">{p.value}</span></p>
+          <p key={p.name} style={{ color: p.color }}>
+            {p.name}: <span className="font-600">{p.value}</span>
+          </p>
         ))}
       </div>
     );
@@ -76,7 +120,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     loadReportData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [companyId, period]);
 
   const loadReportData = async () => {
@@ -93,7 +137,11 @@ export default function ReportsPage() {
       const start = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
       const end = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
 
-      let q = supabase.from('jobs').select('job_status').gte('scheduled_date', start).lte('scheduled_date', end);
+      let q = supabase
+        .from('jobs')
+        .select('job_status')
+        .gte('scheduled_date', start)
+        .lte('scheduled_date', end);
       if (companyId) q = q.eq('company_id', companyId);
       const { data: jobRows } = await q;
 
@@ -106,7 +154,9 @@ export default function ReportsPage() {
     setJobsData(monthlyJobs);
 
     // Service breakdown from real job types
-    const periodStart = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1).toISOString().split('T')[0];
+    const periodStart = new Date(now.getFullYear(), now.getMonth() - monthsBack, 1)
+      .toISOString()
+      .split('T')[0];
     let typeQuery = supabase.from('jobs').select('type').gte('scheduled_date', periodStart);
     if (companyId) typeQuery = typeQuery.eq('company_id', companyId);
     const { data: typeRows } = await typeQuery;
@@ -157,24 +207,80 @@ export default function ReportsPage() {
     const { count: cCount } = await cq;
 
     // KPIs
-    const lastMonth = monthlyJobs[monthlyJobs.length - 1] || { completed: 0, scheduled: 0, cancelled: 0, month: '' };
-    const completionRate = lastMonth.scheduled > 0 ? ((lastMonth.completed / lastMonth.scheduled) * 100).toFixed(1) : '—';
+    const lastMonth = monthlyJobs[monthlyJobs.length - 1] || {
+      completed: 0,
+      scheduled: 0,
+      cancelled: 0,
+      month: '',
+    };
+    const completionRate =
+      lastMonth.scheduled > 0
+        ? ((lastMonth.completed / lastMonth.scheduled) * 100).toFixed(1)
+        : '—';
     const lastCompRate = compMonths[compMonths.length - 1]?.rate || 95;
 
     setKpis([
-      { label: 'Jobs Completed', value: String(lastMonth.completed || 0), change: '+live', up: true, icon: Briefcase, color: '#2563EB' },
-      { label: 'Active Contractors', value: String(cCount || 0), change: 'live', up: true, icon: Users, color: '#8B5CF6' },
-      { label: 'Completion Rate', value: `${completionRate}%`, change: 'live', up: true, icon: CheckCircle2, color: '#10B981' },
-      { label: 'Compliance Score', value: `${lastCompRate}%`, change: 'live', up: lastCompRate >= 90, icon: AlertTriangle, color: '#F97316' },
-      { label: 'Jobs Scheduled', value: String(lastMonth.scheduled || 0), change: 'live', up: true, icon: Clock, color: '#F59E0B' },
-      { label: 'Jobs Cancelled', value: String(lastMonth.cancelled || 0), change: 'live', up: false, icon: DollarSign, color: '#EF4444' },
+      {
+        label: 'Jobs Completed',
+        value: String(lastMonth.completed || 0),
+        change: '+live',
+        up: true,
+        icon: Briefcase,
+        color: '#2563EB',
+      },
+      {
+        label: 'Active Contractors',
+        value: String(cCount || 0),
+        change: 'live',
+        up: true,
+        icon: Users,
+        color: '#8B5CF6',
+      },
+      {
+        label: 'Completion Rate',
+        value: `${completionRate}%`,
+        change: 'live',
+        up: true,
+        icon: CheckCircle2,
+        color: '#10B981',
+      },
+      {
+        label: 'Compliance Score',
+        value: `${lastCompRate}%`,
+        change: 'live',
+        up: lastCompRate >= 90,
+        icon: AlertTriangle,
+        color: '#F97316',
+      },
+      {
+        label: 'Jobs Scheduled',
+        value: String(lastMonth.scheduled || 0),
+        change: 'live',
+        up: true,
+        icon: Clock,
+        color: '#F59E0B',
+      },
+      {
+        label: 'Jobs Cancelled',
+        value: String(lastMonth.cancelled || 0),
+        change: 'live',
+        up: false,
+        icon: DollarSign,
+        color: '#EF4444',
+      },
     ]);
 
     setLoading(false);
   };
 
   const exportCSV = () => {
-    const headers = ['Month', 'Completed Jobs', 'Scheduled Jobs', 'Cancelled Jobs', 'Compliance Rate'];
+    const headers = [
+      'Month',
+      'Completed Jobs',
+      'Scheduled Jobs',
+      'Cancelled Jobs',
+      'Compliance Rate',
+    ];
     const rows = jobsData.map((j, i) => [
       j.month,
       j.completed,
@@ -243,21 +349,38 @@ export default function ReportsPage() {
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
             <h1 className="page-header-title">Reports</h1>
-            <p className="page-header-subtitle">Live operational dashboards and performance metrics</p>
+            <p className="page-header-subtitle">
+              Live operational dashboards and performance metrics
+            </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <div className="period-selector">
               {['1m', '3m', '6m', '1y'].map((p) => (
-                <button key={p} onClick={() => setPeriod(p)} className={`period-btn ${period === p ? 'active' : ''}`} aria-pressed={period === p}>
+                <button
+                  key={p}
+                  onClick={() => setPeriod(p)}
+                  className={`period-btn ${period === p ? 'active' : ''}`}
+                  aria-pressed={period === p}
+                >
                   {p}
                 </button>
               ))}
             </div>
-            <button onClick={exportCSV} className="btn-secondary text-sm py-2 px-3" aria-label="Export CSV">
-              <Download size={14} />CSV
+            <button
+              onClick={exportCSV}
+              className="btn-secondary text-sm py-2 px-3"
+              aria-label="Export CSV"
+            >
+              <Download size={14} />
+              CSV
             </button>
-            <button onClick={exportPDF} className="btn-primary text-sm py-2 px-3" aria-label="Export PDF">
-              <FileText size={14} />PDF
+            <button
+              onClick={exportPDF}
+              className="btn-primary text-sm py-2 px-3"
+              aria-label="Export PDF"
+            >
+              <FileText size={14} />
+              PDF
             </button>
           </div>
         </div>
@@ -266,7 +389,9 @@ export default function ReportsPage() {
           <>
             {/* KPI skeletons */}
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <SkeletonCard key={i} />
+              ))}
             </div>
             {/* Chart skeletons */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -288,7 +413,9 @@ export default function ReportsPage() {
                     <div className="p-1.5 rounded-lg" style={{ backgroundColor: `${kpi.color}18` }}>
                       <kpi.icon size={14} style={{ color: kpi.color }} />
                     </div>
-                    <span className={`text-xs font-600 flex items-center gap-0.5 ${kpi.up ? 'text-success' : 'text-danger'}`}>
+                    <span
+                      className={`text-xs font-600 flex items-center gap-0.5 ${kpi.up ? 'text-success' : 'text-danger'}`}
+                    >
                       {kpi.up ? <TrendingUp size={11} /> : <TrendingDown size={11} />}
                       {kpi.change}
                     </span>
@@ -306,32 +433,86 @@ export default function ReportsPage() {
                 {jobsData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <BarChart data={jobsData} barGap={4}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                      <YAxis tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--border)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
                       <Tooltip content={<CustomTooltip />} />
-                      <Bar dataKey="completed" name="Completed" fill="#2563EB" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="scheduled" name="Scheduled" fill="#93C5FD" radius={[3, 3, 0, 0]} />
-                      <Bar dataKey="cancelled" name="Cancelled" fill="#FCA5A5" radius={[3, 3, 0, 0]} />
+                      <Bar
+                        dataKey="completed"
+                        name="Completed"
+                        fill="#2563EB"
+                        radius={[3, 3, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="scheduled"
+                        name="Scheduled"
+                        fill="#93C5FD"
+                        radius={[3, 3, 0, 0]}
+                      />
+                      <Bar
+                        dataKey="cancelled"
+                        name="Cancelled"
+                        fill="#FCA5A5"
+                        radius={[3, 3, 0, 0]}
+                      />
                     </BarChart>
                   </ResponsiveContainer>
                 ) : (
                   <div className="h-[220px] flex items-center justify-center">
-                    <p className="text-sm text-muted-foreground">No job data yet. Create jobs to see trends.</p>
+                    <p className="text-sm text-muted-foreground">
+                      No job data yet. Create jobs to see trends.
+                    </p>
                   </div>
                 )}
               </div>
 
               <div className="card-elevated p-5">
-                <h3 className="text-sm font-700 text-foreground mb-4">Compliance Rate Trend (Live)</h3>
+                <h3 className="text-sm font-700 text-foreground mb-4">
+                  Compliance Rate Trend (Live)
+                </h3>
                 {complianceData.length > 0 ? (
                   <ResponsiveContainer width="100%" height={220}>
                     <LineChart data={complianceData}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                      <XAxis dataKey="month" tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} />
-                      <YAxis domain={[70, 100]} tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }} axisLine={false} tickLine={false} tickFormatter={(v) => `${v}%`} />
+                      <CartesianGrid
+                        strokeDasharray="3 3"
+                        stroke="var(--border)"
+                        vertical={false}
+                      />
+                      <XAxis
+                        dataKey="month"
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        domain={[70, 100]}
+                        tick={{ fontSize: 11, fill: 'var(--muted-foreground)' }}
+                        axisLine={false}
+                        tickLine={false}
+                        tickFormatter={(v) => `${v}%`}
+                      />
                       <Tooltip content={<CustomTooltip />} />
-                      <Line type="monotone" dataKey="rate" name="Compliance %" stroke="#8B5CF6" strokeWidth={2.5} dot={{ r: 4, fill: '#8B5CF6' }} />
+                      <Line
+                        type="monotone"
+                        dataKey="rate"
+                        name="Compliance %"
+                        stroke="#8B5CF6"
+                        strokeWidth={2.5}
+                        dot={{ r: 4, fill: '#8B5CF6' }}
+                      />
                     </LineChart>
                   </ResponsiveContainer>
                 ) : (
@@ -350,7 +531,15 @@ export default function ReportsPage() {
                   <>
                     <ResponsiveContainer width="100%" height={200}>
                       <PieChart>
-                        <Pie data={serviceBreakdown} cx="50%" cy="50%" innerRadius={55} outerRadius={80} paddingAngle={3} dataKey="value">
+                        <Pie
+                          data={serviceBreakdown}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={55}
+                          outerRadius={80}
+                          paddingAngle={3}
+                          dataKey="value"
+                        >
                           {serviceBreakdown.map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={entry.color} />
                           ))}
@@ -362,7 +551,10 @@ export default function ReportsPage() {
                       {serviceBreakdown.map((item) => (
                         <div key={item.name} className="flex items-center justify-between text-xs">
                           <div className="flex items-center gap-2">
-                            <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                            <div
+                              className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                              style={{ backgroundColor: item.color }}
+                            />
                             <span className="text-muted-foreground">{item.name}</span>
                           </div>
                           <span className="font-600 text-foreground">{item.value}%</span>
@@ -373,7 +565,11 @@ export default function ReportsPage() {
                 ) : (
                   <div className="h-[200px] flex items-center justify-center flex-col gap-2">
                     <Briefcase size={32} className="text-muted-foreground opacity-30" />
-                    <p className="text-sm text-muted-foreground text-center">No job data yet.<br />Create jobs to see service breakdown.</p>
+                    <p className="text-sm text-muted-foreground text-center">
+                      No job data yet.
+                      <br />
+                      Create jobs to see service breakdown.
+                    </p>
                   </div>
                 )}
               </div>
@@ -383,16 +579,26 @@ export default function ReportsPage() {
                 <h3 className="text-sm font-700 text-foreground mb-4">Period Summary</h3>
                 <div className="grid grid-cols-2 gap-4">
                   {[
-                    { label: 'Total Jobs This Period', value: jobsData.reduce((s, m) => s + m.scheduled, 0) },
+                    {
+                      label: 'Total Jobs This Period',
+                      value: jobsData.reduce((s, m) => s + m.scheduled, 0),
+                    },
                     { label: 'Completed', value: jobsData.reduce((s, m) => s + m.completed, 0) },
                     { label: 'Cancelled', value: jobsData.reduce((s, m) => s + m.cancelled, 0) },
-                    { label: 'Completion Rate', value: (() => {
-                      const total = jobsData.reduce((s, m) => s + m.scheduled, 0);
-                      const done = jobsData.reduce((s, m) => s + m.completed, 0);
-                      return total > 0 ? `${((done / total) * 100).toFixed(1)}%` : '—';
-                    })() },
+                    {
+                      label: 'Completion Rate',
+                      value: (() => {
+                        const total = jobsData.reduce((s, m) => s + m.scheduled, 0);
+                        const done = jobsData.reduce((s, m) => s + m.completed, 0);
+                        return total > 0 ? `${((done / total) * 100).toFixed(1)}%` : '—';
+                      })(),
+                    },
                   ].map((item) => (
-                    <div key={item.label} className="p-4 rounded-xl" style={{ backgroundColor: 'var(--secondary)' }}>
+                    <div
+                      key={item.label}
+                      className="p-4 rounded-xl"
+                      style={{ backgroundColor: 'var(--secondary)' }}
+                    >
                       <p className="text-2xl font-700 text-foreground font-tabular">{item.value}</p>
                       <p className="text-xs text-muted-foreground mt-1">{item.label}</p>
                     </div>

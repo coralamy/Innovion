@@ -70,7 +70,11 @@ function rowToJob(row: ScheduledJobRow): ScheduledJob {
 }
 
 export const scheduleService = {
-  async getWeekJobs(weekStart: string, weekEnd: string, companyId?: string | null): Promise<ScheduledJob[]> {
+  async getWeekJobs(
+    weekStart: string,
+    weekEnd: string,
+    companyId?: string | null
+  ): Promise<ScheduledJob[]> {
     const supabase = createClient();
     let query = supabase
       .from('scheduled_jobs')
@@ -81,13 +85,26 @@ export const scheduleService = {
       .order('start_time', { ascending: true });
     if (companyId) query = query.eq('company_id', companyId);
     const { data, error } = await query;
-    if (error) { logger.error('scheduleService', 'Failed to fetch week jobs', { weekStart, weekEnd, companyId, error: error.message }); return []; }
+    if (error) {
+      logger.error('scheduleService', 'Failed to fetch week jobs', {
+        weekStart,
+        weekEnd,
+        companyId,
+        error: error.message,
+      });
+      return [];
+    }
     return (data as ScheduledJobRow[]).map(rowToJob);
   },
 
-  async createJob(job: Omit<ScheduledJob, 'id'>, companyId?: string | null): Promise<ScheduledJob | null> {
+  async createJob(
+    job: Omit<ScheduledJob, 'id'>,
+    companyId?: string | null
+  ): Promise<ScheduledJob | null> {
     const supabase = createClient();
-    const count = await supabase.from('scheduled_jobs').select('id', { count: 'exact', head: true });
+    const count = await supabase
+      .from('scheduled_jobs')
+      .select('id', { count: 'exact', head: true });
     const jobNum = `JOB-${String((count.count || 0) + 1000 + 1).padStart(4, '0')}`;
 
     const { data, error } = await supabase
@@ -113,7 +130,13 @@ export const scheduleService = {
       })
       .select()
       .single();
-    if (error) { logger.error('scheduleService', 'Failed to create scheduled job', { site: job.site, error: error.message }); return null; }
+    if (error) {
+      logger.error('scheduleService', 'Failed to create scheduled job', {
+        site: job.site,
+        error: error.message,
+      });
+      return null;
+    }
     return rowToJob(data as ScheduledJobRow);
   },
 
@@ -123,14 +146,27 @@ export const scheduleService = {
       .from('scheduled_jobs')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);
-    if (error) { logger.error('scheduleService', 'Failed to update job status', { id, status, error: error.message }); return false; }
+    if (error) {
+      logger.error('scheduleService', 'Failed to update job status', {
+        id,
+        status,
+        error: error.message,
+      });
+      return false;
+    }
     return true;
   },
 
   async deleteJob(id: string): Promise<boolean> {
     const supabase = createClient();
     const { error } = await supabase.from('scheduled_jobs').delete().eq('id', id);
-    if (error) { logger.error('scheduleService', 'Failed to delete scheduled job', { id, error: error.message }); return false; }
+    if (error) {
+      logger.error('scheduleService', 'Failed to delete scheduled job', {
+        id,
+        error: error.message,
+      });
+      return false;
+    }
     return true;
   },
 };

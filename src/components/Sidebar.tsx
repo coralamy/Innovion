@@ -5,7 +5,39 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import AppLogo from './ui/AppLogo';
 import {
-  LayoutDashboard, Calendar, Briefcase, MapPin, Users, UserCheck, UserCog, ShieldCheck, FileText, AlertTriangle, Package, Truck, BarChart3, Bell, Settings, Building2, ChevronLeft, ChevronRight, LogOut, Clock, ClipboardList, User, X, Menu, CreditCard, FileCheck, Receipt, RotateCcw, KeyRound, ScanSearch, Globe, Activity, BookUser
+  LayoutDashboard,
+  Calendar,
+  Briefcase,
+  MapPin,
+  Users,
+  UserCheck,
+  UserCog,
+  ShieldCheck,
+  FileText,
+  AlertTriangle,
+  Package,
+  Truck,
+  BarChart3,
+  Bell,
+  Settings,
+  Building2,
+  ChevronLeft,
+  ChevronRight,
+  LogOut,
+  Clock,
+  ClipboardList,
+  User,
+  X,
+  Menu,
+  CreditCard,
+  FileCheck,
+  Receipt,
+  RotateCcw,
+  KeyRound,
+  ScanSearch,
+  Globe,
+  Activity,
+  BookUser,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRBAC } from '@/contexts/RBACContext';
@@ -38,20 +70,29 @@ const navSections: NavSection[] = [
   {
     id: 'overview',
     label: 'Overview',
-    items: [
-      { id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    ],
+    items: [{ id: 'nav-dashboard', label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard }],
   },
   {
     id: 'operations',
     label: 'Operations',
     items: [
-      { id: 'nav-schedule', label: 'Schedule', href: '/scheduling', icon: Calendar, featured: true },
+      {
+        id: 'nav-schedule',
+        label: 'Schedule',
+        href: '/scheduling',
+        icon: Calendar,
+        featured: true,
+      },
       { id: 'nav-recurring', label: 'Recurring Jobs', href: '/recurring-jobs', icon: RotateCcw },
       { id: 'nav-jobs', label: 'Jobs', href: '/jobs', icon: Briefcase },
       { id: 'nav-sites', label: 'Sites', href: '/sites', icon: MapPin },
       { id: 'nav-checklists', label: 'Checklists', href: '/checklists', icon: ClipboardList },
-      { id: 'nav-checklist-templates', label: 'CL Templates', href: '/checklist-templates', icon: FileCheck },
+      {
+        id: 'nav-checklist-templates',
+        label: 'CL Templates',
+        href: '/checklist-templates',
+        icon: FileCheck,
+      },
       { id: 'nav-clients', label: 'Clients', href: '/clients', icon: Building2 },
     ],
   },
@@ -61,12 +102,35 @@ const navSections: NavSection[] = [
     items: [
       { id: 'nav-workforce-roster', label: 'Roster', href: '/workforce-roster', icon: BookUser },
       { id: 'nav-contractors', label: 'Contractors', href: '/contractors', icon: UserCheck },
-      { id: 'nav-workforce-capacity', label: 'Capacity View', href: '/workforce-capacity', icon: Activity },
+      {
+        id: 'nav-workforce-capacity',
+        label: 'Capacity View',
+        href: '/workforce-capacity',
+        icon: Activity,
+      },
       { id: 'nav-time-tracking', label: 'Time Tracking', href: '/time-tracking', icon: Clock },
-      { id: 'nav-timesheet-approval', label: 'Timesheet Approval', href: '/timesheet-approval', icon: FileCheck, requiresPermission: 'canManageJobs' },
-      { id: 'nav-contractor-invoices', label: 'Contractor Invoices', href: '/contractor-invoices', icon: Receipt, requiresPermission: 'canViewFinancials' },
+      {
+        id: 'nav-timesheet-approval',
+        label: 'Timesheet Approval',
+        href: '/timesheet-approval',
+        icon: FileCheck,
+        requiresPermission: 'canManageJobs',
+      },
+      {
+        id: 'nav-contractor-invoices',
+        label: 'Contractor Invoices',
+        href: '/contractor-invoices',
+        icon: Receipt,
+        requiresPermission: 'canViewFinancials',
+      },
       { id: 'nav-employees', label: 'Employees', href: '/employees', icon: Users },
-      { id: 'nav-users', label: 'Users', href: '/users', icon: UserCog, requiresPermission: 'canManageUsers' },
+      {
+        id: 'nav-users',
+        label: 'Users',
+        href: '/users',
+        icon: UserCog,
+        requiresPermission: 'canManageUsers',
+      },
     ],
   },
   {
@@ -84,7 +148,13 @@ const navSections: NavSection[] = [
     items: [
       { id: 'nav-inventory', label: 'Inventory', href: '/inventory', icon: Package },
       { id: 'nav-vehicles', label: 'Vehicles', href: '/vehicles', icon: Truck },
-      { id: 'nav-reports', label: 'Reports', href: '/reports', icon: BarChart3, requiresPermission: 'canViewReports' },
+      {
+        id: 'nav-reports',
+        label: 'Reports',
+        href: '/reports',
+        icon: BarChart3,
+        requiresPermission: 'canViewReports',
+      },
     ],
   },
   {
@@ -95,10 +165,34 @@ const navSections: NavSection[] = [
       { id: 'nav-notifications', label: 'Notifications', href: '/notifications', icon: Bell },
       { id: 'nav-billing', label: 'Billing', href: '/billing', icon: CreditCard },
       { id: 'nav-settings', label: 'Settings', href: '/settings', icon: Settings },
-      { id: 'nav-companies', label: 'Companies', href: '/companies', icon: Building2, requiresPermission: 'canManageCompany' },
-      { id: 'nav-platform-api', label: 'Platform API', href: '/platform-api', icon: KeyRound, requiresPermission: 'canManageCompany' },
-      { id: 'nav-config-inspector', label: 'Configuration Inspector', href: '/platform-config-inspector', icon: ScanSearch, requiresPermission: 'canManageCompany' },
-      { id: 'nav-integrations', label: 'Integrations', href: '/settings/integrations', icon: Globe, requiresPermission: 'canManageCompany' },
+      {
+        id: 'nav-companies',
+        label: 'Companies',
+        href: '/companies',
+        icon: Building2,
+        requiresPermission: 'canManageCompany',
+      },
+      {
+        id: 'nav-platform-api',
+        label: 'Platform API',
+        href: '/platform-api',
+        icon: KeyRound,
+        requiresPermission: 'canManageCompany',
+      },
+      {
+        id: 'nav-config-inspector',
+        label: 'Configuration Inspector',
+        href: '/platform-config-inspector',
+        icon: ScanSearch,
+        requiresPermission: 'canManageCompany',
+      },
+      {
+        id: 'nav-integrations',
+        label: 'Integrations',
+        href: '/settings/integrations',
+        icon: Globe,
+        requiresPermission: 'canManageCompany',
+      },
     ],
   },
 ];
@@ -111,7 +205,13 @@ const mobileBottomNav = [
   { id: 'mob-profile', label: 'Profile', href: '/profile', icon: User },
 ];
 
-export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose, currentPath }: SidebarProps) {
+export default function Sidebar({
+  collapsed,
+  onToggle,
+  mobileOpen,
+  onMobileClose,
+  currentPath,
+}: SidebarProps) {
   const isActive = (href: string) => {
     if (href === '/dashboard' && currentPath === '/') return true;
     return currentPath === href || currentPath.startsWith(href + '/');
@@ -128,7 +228,12 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
           transitionTimingFunction: 'cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <SidebarContent collapsed={collapsed} onToggle={onToggle} isActive={isActive} currentPath={currentPath} />
+        <SidebarContent
+          collapsed={collapsed}
+          onToggle={onToggle}
+          isActive={isActive}
+          currentPath={currentPath}
+        />
       </aside>
 
       {/* Mobile overlay */}
@@ -165,7 +270,13 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
             <X size={16} />
           </button>
         </div>
-        <SidebarContent collapsed={false} onToggle={onMobileClose} isActive={isActive} currentPath={currentPath} isMobile />
+        <SidebarContent
+          collapsed={false}
+          onToggle={onMobileClose}
+          isActive={isActive}
+          currentPath={currentPath}
+          isMobile
+        />
       </aside>
 
       {/* Mobile bottom nav */}
@@ -197,7 +308,9 @@ export default function Sidebar({ collapsed, onToggle, mobileOpen, onMobileClose
                   />
                 )}
               </div>
-              <span style={{ fontSize: '9.5px', fontWeight: active ? 600 : 500 }}>{item.label}</span>
+              <span style={{ fontSize: '9.5px', fontWeight: active ? 600 : 500 }}>
+                {item.label}
+              </span>
             </Link>
           );
         })}
@@ -234,12 +347,27 @@ function SidebarContent({
   isMobile?: boolean;
 }) {
   const { user, signOut } = useAuth();
-  const { hasPermission } = useRBAC();
+  const { hasPermission, role: rbacRole } = useRBAC();
   const router = useRouter();
 
   const fullName: string = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
-  const initials: string = fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2);
-  const role: string = user?.user_metadata?.role || 'Team Member';
+  const initials: string = fullName
+    .split(' ')
+    .map((n: string) => n[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+  /**
+   * DEFECT REMEDIATED: the sidebar displayed `user.user_metadata.role`, which
+   * the end user writes themselves via `supabase.auth.updateUser()`. It is not
+   * an authority check, but it did let a user display any role they liked to
+   * anyone looking at their screen, and it contradicted the authoritative role
+   * that actually governs their permissions. Sourced from RBACContext, which
+   * reads public.user_roles.
+   */
+  const role: string = rbacRole
+    ? rbacRole.charAt(0).toUpperCase() + rbacRole.slice(1)
+    : 'Team Member';
 
   const handleSignOut = async () => {
     try {
@@ -260,8 +388,18 @@ function SidebarContent({
         >
           {!collapsed ? (
             <>
-              <Link href="/dashboard" aria-label="Go to Dashboard" className="flex-1 min-w-0 flex items-center">
-                <AppLogo variant="full" size={46} darkBg={true} showWordmark={true} className="[&_img]:!bg-transparent" />
+              <Link
+                href="/dashboard"
+                aria-label="Go to Dashboard"
+                className="flex-1 min-w-0 flex items-center"
+              >
+                <AppLogo
+                  variant="full"
+                  size={46}
+                  darkBg={true}
+                  showWordmark={true}
+                  className="[&_img]:!bg-transparent"
+                />
               </Link>
               <button
                 onClick={onToggle}
@@ -311,7 +449,12 @@ function SidebarContent({
                   {section.label}
                 </p>
               )}
-              {collapsed && <div className="mx-3 mb-1 h-px" style={{ backgroundColor: 'var(--sidebar-border)' }} />}
+              {collapsed && (
+                <div
+                  className="mx-3 mb-1 h-px"
+                  style={{ backgroundColor: 'var(--sidebar-border)' }}
+                />
+              )}
 
               <div className="px-2 space-y-0.5">
                 {visibleItems.map((item) => {
@@ -324,7 +467,9 @@ function SidebarContent({
                       href={item.href}
                       className={`sidebar-item ${active ? 'active' : ''}`}
                       title={item.label}
-                      style={collapsed ? { justifyContent: 'center', padding: '0.5rem' } : undefined}
+                      style={
+                        collapsed ? { justifyContent: 'center', padding: '0.5rem' } : undefined
+                      }
                     >
                       <ItemIcon
                         size={15}
@@ -336,7 +481,9 @@ function SidebarContent({
                       />
                       {!collapsed && (
                         <>
-                          <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{item.label}</span>
+                          <span className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
+                            {item.label}
+                          </span>
                           {item.featured && !active && (
                             <span
                               className="flex-shrink-0 text-[9px] font-700 px-1.5 py-0.5 rounded-full uppercase tracking-wide"
@@ -357,10 +504,7 @@ function SidebarContent({
       </div>
 
       {/* User footer */}
-      <div
-        className="flex-shrink-0 p-2"
-        style={{ borderTop: '1px solid var(--sidebar-border)' }}
-      >
+      <div className="flex-shrink-0 p-2" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
         {!collapsed ? (
           <div
             className="flex items-center gap-2.5 px-2.5 py-2.5 rounded-xl transition-all duration-150 cursor-pointer group"
@@ -377,8 +521,18 @@ function SidebarContent({
               {initials}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[12px] font-600 truncate" style={{ color: 'var(--sidebar-text-active)' }}>{fullName}</p>
-              <p className="text-[10px] truncate" style={{ color: 'var(--sidebar-text)', opacity: 0.6 }}>{role}</p>
+              <p
+                className="text-[12px] font-600 truncate"
+                style={{ color: 'var(--sidebar-text-active)' }}
+              >
+                {fullName}
+              </p>
+              <p
+                className="text-[10px] truncate"
+                style={{ color: 'var(--sidebar-text)', opacity: 0.6 }}
+              >
+                {role}
+              </p>
             </div>
             <button
               onClick={handleSignOut}

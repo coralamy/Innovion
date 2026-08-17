@@ -23,18 +23,18 @@ export interface RolePermissionRecord {
 
 function mapRow(row: Record<string, unknown>): RolePermissionRecord {
   return {
-    id:        row.id as string,
+    id: row.id as string,
     companyId: row.company_id as string,
-    roleName:  row.role_name as UserRole,
+    roleName: row.role_name as UserRole,
     permissions: {
-      canManageUsers:      row.can_manage_users as boolean,
-      canManageCompany:    row.can_manage_company as boolean,
-      canViewReports:      row.can_view_reports as boolean,
-      canManageJobs:       row.can_manage_jobs as boolean,
+      canManageUsers: row.can_manage_users as boolean,
+      canManageCompany: row.can_manage_company as boolean,
+      canViewReports: row.can_view_reports as boolean,
+      canManageJobs: row.can_manage_jobs as boolean,
       canManageCompliance: row.can_manage_compliance as boolean,
-      canManageDocuments:  row.can_manage_documents as boolean,
-      canManageInventory:  row.can_manage_inventory as boolean,
-      canViewFinancials:   row.can_view_financials as boolean,
+      canManageDocuments: row.can_manage_documents as boolean,
+      canManageInventory: row.can_manage_inventory as boolean,
+      canViewFinancials: row.can_view_financials as boolean,
     },
     createdAt: row.created_at as string,
     updatedAt: row.updated_at as string,
@@ -68,22 +68,26 @@ export const rolePermissionsService = {
   },
 
   /** Upsert permissions for a role within a company (admin only) */
-  async upsert(companyId: string, roleName: UserRole, permissions: RolePermissions): Promise<RolePermissionRecord> {
+  async upsert(
+    companyId: string,
+    roleName: UserRole,
+    permissions: RolePermissions
+  ): Promise<RolePermissionRecord> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('role_permissions')
       .upsert(
         {
-          company_id:            companyId,
-          role_name:             roleName,
-          can_manage_users:      permissions.canManageUsers,
-          can_manage_company:    permissions.canManageCompany,
-          can_view_reports:      permissions.canViewReports,
-          can_manage_jobs:       permissions.canManageJobs,
+          company_id: companyId,
+          role_name: roleName,
+          can_manage_users: permissions.canManageUsers,
+          can_manage_company: permissions.canManageCompany,
+          can_view_reports: permissions.canViewReports,
+          can_manage_jobs: permissions.canManageJobs,
           can_manage_compliance: permissions.canManageCompliance,
-          can_manage_documents:  permissions.canManageDocuments,
-          can_manage_inventory:  permissions.canManageInventory,
-          can_view_financials:   permissions.canViewFinancials,
+          can_manage_documents: permissions.canManageDocuments,
+          can_manage_inventory: permissions.canManageInventory,
+          can_view_financials: permissions.canViewFinancials,
         },
         { onConflict: 'company_id,role_name' }
       )

@@ -29,45 +29,45 @@ export const BRAND_ASSETS = {
 // ── Colour Tokens ────────────────────────────────────────────────────────────
 export const BRAND_COLORS = {
   // Core palette — Coralamy platform identity
-  navy:        '#0F1C2E',
-  navyMid:     '#1E3A5F',
-  navyLight:   '#2A4A72',
-  blue:        '#2563EB',
-  blueHover:   '#1D4ED8',
-  blueLight:   '#60A5FA',
-  bluePale:    '#93C5FD',
+  navy: '#0F1C2E',
+  navyMid: '#1E3A5F',
+  navyLight: '#2A4A72',
+  blue: '#2563EB',
+  blueHover: '#1D4ED8',
+  blueLight: '#60A5FA',
+  bluePale: '#93C5FD',
 
   // Coralamy coral accent
-  coral:       '#E8533A',
-  coralHover:  '#D4432B',
-  coralLight:  '#F4836E',
-  coralPale:   '#FBBCB0',
+  coral: '#E8533A',
+  coralHover: '#D4432B',
+  coralLight: '#F4836E',
+  coralPale: '#FBBCB0',
 
   // Semantic
-  primary:     '#1E3A5F',
-  accent:      '#2563EB',
-  background:  '#F8FAFC',
-  foreground:  '#0F172A',
-  card:        '#FFFFFF',
-  border:      '#E2E8F0',
-  muted:       '#64748B',
+  primary: '#1E3A5F',
+  accent: '#2563EB',
+  background: '#F8FAFC',
+  foreground: '#0F172A',
+  card: '#FFFFFF',
+  border: '#E2E8F0',
+  muted: '#64748B',
 
   // Status
-  success:     '#10B981',
-  warning:     '#F59E0B',
-  danger:      '#EF4444',
-  info:        '#3B82F6',
+  success: '#10B981',
+  warning: '#F59E0B',
+  danger: '#EF4444',
+  info: '#3B82F6',
 } as const;
 
 // ── Typography ───────────────────────────────────────────────────────────────
 export const BRAND_TYPOGRAPHY = {
-  fontFamily:  'var(--font-plus-jakarta-sans), sans-serif',
-  fontSans:    'var(--font-sans)',
+  fontFamily: 'var(--font-plus-jakarta-sans), sans-serif',
+  fontSans: 'var(--font-sans)',
   weights: {
-    regular:   400,
-    medium:    500,
-    semibold:  600,
-    bold:      700,
+    regular: 400,
+    medium: 500,
+    semibold: 600,
+    bold: 700,
     extrabold: 800,
   },
 } as const;
@@ -75,36 +75,37 @@ export const BRAND_TYPOGRAPHY = {
 // ── Platform Identity (Coralamy Group) ───────────────────────────────────────
 export const PLATFORM_IDENTITY = {
   /** Parent platform / group company name */
-  platformName:  'Coralamy',
+  platformName: 'Coralamy',
   /** Platform tagline */
   platformTagline: 'The Intelligent Business Platform',
   /** Platform URL */
-  platformUrl:   'https://coralamy.com',
+  platformUrl: 'https://coralamy.com',
   /** Copyright line */
-  copyright:     '© Coralamy Group. All rights reserved.',
+  copyright: '© Coralamy Group. All rights reserved.',
 } as const;
 
 // ── Product Identity (Innovion — Coralamy product) ───────────────────────────
 export const BRAND_IDENTITY = {
   /** Product name */
-  name:        'Innovion',
+  name: 'Innovion',
   /** Full qualified name shown in Platform Console breadcrumbs */
   qualifiedName: 'Innovion by Coralamy',
   /** Product tagline */
-  tagline:     'intelligent Micro Business Operations Management',
+  tagline: 'intelligent Micro Business Operations Management',
   /** Product description */
-  description: 'Innovion brings customers, jobs, staff, contractors, scheduling, compliance, inventory and reporting together in one intelligent cloud platform for micro businesses.',
+  description:
+    'Innovion brings customers, jobs, staff, contractors, scheduling, compliance, inventory and reporting together in one intelligent cloud platform for micro businesses.',
   /** Copyright line — references Coralamy Group */
-  copyright:   '© Coralamy Group. All rights reserved.',
+  copyright: '© Coralamy Group. All rights reserved.',
   /** Canonical product URL */
-  url:         'https://innovion.app',
+  url: 'https://innovion.app',
 } as const;
 
 // ── Gradient Presets ─────────────────────────────────────────────────────────
 export const BRAND_GRADIENTS = {
-  navy:      'linear-gradient(145deg, #0F1C2E 0%, #1E3A5F 60%, #162D4A 100%)',
-  brand:     'linear-gradient(135deg, #1E3A5F 0%, #2563EB 100%)',
-  hero:      'linear-gradient(160deg, #070F1A 0%, #0F1C2E 40%, #1A2E4A 100%)',
+  navy: 'linear-gradient(145deg, #0F1C2E 0%, #1E3A5F 60%, #162D4A 100%)',
+  brand: 'linear-gradient(135deg, #1E3A5F 0%, #2563EB 100%)',
+  hero: 'linear-gradient(160deg, #070F1A 0%, #0F1C2E 40%, #1A2E4A 100%)',
   authPanel: 'linear-gradient(160deg, #060D1A 0%, #0F1C2E 40%, #162D4A 100%)',
-  coral:     'linear-gradient(135deg, #E8533A 0%, #D4432B 100%)',
+  coral: 'linear-gradient(135deg, #E8533A 0%, #D4432B 100%)',
 } as const;

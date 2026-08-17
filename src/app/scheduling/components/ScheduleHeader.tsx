@@ -1,9 +1,18 @@
 'use client';
 import React from 'react';
-import { ChevronLeft, ChevronRight, Plus, Calendar, List, Grid3X3, User, MapPin, RefreshCw } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Calendar,
+  List,
+  Grid3X3,
+  User,
+  MapPin,
+  RefreshCw,
+} from 'lucide-react';
 import type { ViewMode } from './SchedulingModule';
 import Icon from '@/components/ui/AppIcon';
-
 
 interface ScheduleHeaderProps {
   viewMode: ViewMode;
@@ -11,6 +20,12 @@ interface ScheduleHeaderProps {
   weekOffset: number;
   onWeekChange: (offset: number) => void;
   onNewJob: () => void;
+  /**
+   * The "Refresh schedule" control had no handler at all — it rendered a
+   * refresh icon with a tooltip and did nothing. The module already owns a
+   * `loadData()` that re-fetches jobs and contractors; it is now passed in.
+   */
+  onRefresh: () => void;
 }
 
 const views: { id: ViewMode; label: string; icon: React.ElementType }[] = [
@@ -35,14 +50,34 @@ function getWeekLabel(offset: number): string {
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const months = [
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
+  ];
   if (monday.getMonth() === sunday.getMonth()) {
     return `${monday.getDate()} – ${sunday.getDate()} ${months[monday.getMonth()]} ${monday.getFullYear()}`;
   }
   return `${monday.getDate()} ${months[monday.getMonth()]} – ${sunday.getDate()} ${months[sunday.getMonth()]} ${sunday.getFullYear()}`;
 }
 
-export default function ScheduleHeader({ viewMode, onViewChange, weekOffset, onWeekChange, onNewJob }: ScheduleHeaderProps) {
+export default function ScheduleHeader({
+  viewMode,
+  onViewChange,
+  weekOffset,
+  onWeekChange,
+  onNewJob,
+  onRefresh,
+}: ScheduleHeaderProps) {
   return (
     <div className="flex-shrink-0 bg-card border-b border-border px-4 lg:px-6 xl:px-8 2xl:px-10 py-3">
       <div className="flex items-center gap-3 flex-wrap">
@@ -100,7 +135,11 @@ export default function ScheduleHeader({ viewMode, onViewChange, weekOffset, onW
 
         {/* Actions */}
         <div className="flex items-center gap-2">
-          <button className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors" title="Refresh schedule">
+          <button
+            onClick={onRefresh}
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+            title="Refresh schedule"
+          >
             <RefreshCw size={16} />
           </button>
           <button

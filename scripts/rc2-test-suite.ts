@@ -18,25 +18,26 @@
 
 const BASE_URL = process.env.BASE_URL ?? 'https://innovion.app';
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '';
+const SUPABASE_ANON_KEY =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? process.env.SUPABASE_ANON_KEY ?? '';
 const TIMEOUT_MS = 15_000;
 
 // ─── Colour helpers ───────────────────────────────────────────────────────────
-const GREEN  = '\x1b[32m';
-const RED    = '\x1b[31m';
+const GREEN = '\x1b[32m';
+const RED = '\x1b[31m';
 const YELLOW = '\x1b[33m';
-const CYAN   = '\x1b[36m';
-const BLUE   = '\x1b[34m';
-const BOLD   = '\x1b[1m';
-const RESET  = '\x1b[0m';
-const DIM    = '\x1b[2m';
+const CYAN = '\x1b[36m';
+const BLUE = '\x1b[34m';
+const BOLD = '\x1b[1m';
+const RESET = '\x1b[0m';
+const DIM = '\x1b[2m';
 
-const passLog  = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
-const failLog  = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
-const warnLog  = (msg: string) => console.log(`  ${YELLOW}⚠${RESET}  ${msg}`);
+const passLog = (msg: string) => console.log(`  ${GREEN}✔${RESET}  ${msg}`);
+const failLog = (msg: string) => console.log(`  ${RED}✘${RESET}  ${msg}`);
+const warnLog = (msg: string) => console.log(`  ${YELLOW}⚠${RESET}  ${msg}`);
 const blockLog = (msg: string) => console.log(`  ${BLUE}◈${RESET}  ${msg}`);
-const title    = (msg: string) => console.log(`\n${BOLD}${CYAN}${msg}${RESET}`);
-const divider  = ()            => console.log(`${DIM}${'─'.repeat(72)}${RESET}`);
+const title = (msg: string) => console.log(`\n${BOLD}${CYAN}${msg}${RESET}`);
+const divider = () => console.log(`${DIM}${'─'.repeat(72)}${RESET}`);
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type TestStatus = 'PASS' | 'FAIL' | 'BLOCKED';
@@ -174,12 +175,16 @@ async function runAuthTests(): Promise<void> {
     if (res.status === 404) throw new Error('Auth callback route returned 404');
   });
 
-  await test('RC2-AUTH-03', 'Unauthenticated dashboard access redirects (non-200 or redirect)', async () => {
-    const res = await httpGet('/dashboard');
-    if (res.status === 404) throw new Error('Dashboard route not found');
-    // 200 is acceptable if SSR renders empty/loading state — not a security failure
-    // A redirect (3xx) or auth guard (200 with redirect in JS) are both valid
-  });
+  await test(
+    'RC2-AUTH-03',
+    'Unauthenticated dashboard access redirects (non-200 or redirect)',
+    async () => {
+      const res = await httpGet('/dashboard');
+      if (res.status === 404) throw new Error('Dashboard route not found');
+      // 200 is acceptable if SSR renders empty/loading state — not a security failure
+      // A redirect (3xx) or auth guard (200 with redirect in JS) are both valid
+    }
+  );
 
   await test('RC2-AUTH-04', 'Password reset page loads', async () => {
     const res = await httpGet('/reset-password', 200);
@@ -199,7 +204,8 @@ async function runAuthTests(): Promise<void> {
       throw new Error('SUPABASE_URL appears to be a placeholder');
     }
     const url = new URL(SUPABASE_URL);
-    if (!url.hostname.includes('supabase')) throw new Error('URL does not appear to be a Supabase project URL');
+    if (!url.hostname.includes('supabase'))
+      throw new Error('URL does not appear to be a Supabase project URL');
   });
 
   await test('RC2-AUTH-07', 'Supabase anon key is a valid JWT', async () => {
@@ -271,20 +277,24 @@ async function runJobsTests(): Promise<void> {
     if (res.status === 404) throw new Error('Recurring jobs route not found');
   });
 
-  await test('RC2-JOBS-04', 'Supabase jobs table is accessible (unauthenticated returns 401)', async () => {
-    const { error } = await supabaseGet('jobs', { select: 'id', limit: '1' });
-    // Unauthenticated access should return empty array (RLS blocks) or error — not raw data
-    if (error) {
-      const errObj = error as Record<string, unknown>;
-      const code = errObj?.code as string;
-      // PGRST301 = JWT required, 401 = unauthenticated — both are correct
-      if (code !== 'PGRST301' && code !== '401') {
-        // If no error but data returned, that's a problem — but RLS should block it
-        warnLog(`Jobs table returned unexpected error code: ${code}`);
+  await test(
+    'RC2-JOBS-04',
+    'Supabase jobs table is accessible (unauthenticated returns 401)',
+    async () => {
+      const { error } = await supabaseGet('jobs', { select: 'id', limit: '1' });
+      // Unauthenticated access should return empty array (RLS blocks) or error — not raw data
+      if (error) {
+        const errObj = error as Record<string, unknown>;
+        const code = errObj?.code as string;
+        // PGRST301 = JWT required, 401 = unauthenticated — both are correct
+        if (code !== 'PGRST301' && code !== '401') {
+          // If no error but data returned, that's a problem — but RLS should block it
+          warnLog(`Jobs table returned unexpected error code: ${code}`);
+        }
       }
+      // If data is empty array, RLS is working correctly
     }
-    // If data is empty array, RLS is working correctly
-  });
+  );
 
   await test('RC2-JOBS-05', 'Jobs table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('jobs', { select: 'id,company_id' });
@@ -313,16 +323,24 @@ async function runChecklistTests(): Promise<void> {
   await test('RC2-CHK-03', 'Checklists table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('checklists', { select: 'id,company_id' });
     if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} checklist records returned without authentication`);
+      throw new Error(
+        `RLS FAILURE: ${data.length} checklist records returned without authentication`
+      );
     }
   });
 
-  await test('RC2-CHK-04', 'Checklist responses table RLS blocks unauthenticated SELECT', async () => {
-    const { data } = await supabaseGet('checklist_responses', { select: 'id' });
-    if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} checklist_responses returned without authentication`);
+  await test(
+    'RC2-CHK-04',
+    'Checklist responses table RLS blocks unauthenticated SELECT',
+    async () => {
+      const { data } = await supabaseGet('checklist_responses', { select: 'id' });
+      if (Array.isArray(data) && data.length > 0) {
+        throw new Error(
+          `RLS FAILURE: ${data.length} checklist_responses returned without authentication`
+        );
+      }
     }
-  });
+  );
 }
 
 // ─── AREA 5: Issue Reports ────────────────────────────────────────────────────
@@ -363,14 +381,18 @@ async function runSupplyRequestTests(): Promise<void> {
   await test('RC2-SUP-02', 'Supply requests table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('supply_requests', { select: 'id,company_id' });
     if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} supply_requests returned without authentication`);
+      throw new Error(
+        `RLS FAILURE: ${data.length} supply_requests returned without authentication`
+      );
     }
   });
 
   await test('RC2-SUP-03', 'Inventory table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('inventory', { select: 'id,company_id' });
     if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} inventory records returned without authentication`);
+      throw new Error(
+        `RLS FAILURE: ${data.length} inventory records returned without authentication`
+      );
     }
   });
 }
@@ -419,12 +441,18 @@ async function runDocumentTests(): Promise<void> {
     }
   });
 
-  await test('RC2-DOC-03', 'Contractor documents table RLS blocks unauthenticated SELECT', async () => {
-    const { data } = await supabaseGet('contractor_documents', { select: 'id' });
-    if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} contractor_documents returned without authentication`);
+  await test(
+    'RC2-DOC-03',
+    'Contractor documents table RLS blocks unauthenticated SELECT',
+    async () => {
+      const { data } = await supabaseGet('contractor_documents', { select: 'id' });
+      if (Array.isArray(data) && data.length > 0) {
+        throw new Error(
+          `RLS FAILURE: ${data.length} contractor_documents returned without authentication`
+        );
+      }
     }
-  });
+  );
 }
 
 // ─── AREA 9: Notes ────────────────────────────────────────────────────────────
@@ -443,7 +471,9 @@ async function runNotesTests(): Promise<void> {
   await test('RC2-NOTE-02', 'Activity log table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('activity_log', { select: 'id,company_id' });
     if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} activity_log records returned without authentication`);
+      throw new Error(
+        `RLS FAILURE: ${data.length} activity_log records returned without authentication`
+      );
     }
   });
 }
@@ -454,13 +484,17 @@ async function runPlatformSyncTests(): Promise<void> {
   title('AREA 10 — Platform Sync');
   divider();
 
-  await test('RC2-SYNC-01', 'Platform configuration API responds (401 unauthenticated)', async () => {
-    const res = await httpGet('/api/platform/configuration');
-    if (res.status === 404) throw new Error('Platform configuration route not found');
-    if (res.status === 200) {
-      warnLog('Platform config returned 200 without auth — verify auth enforcement');
+  await test(
+    'RC2-SYNC-01',
+    'Platform configuration API responds (401 unauthenticated)',
+    async () => {
+      const res = await httpGet('/api/platform/configuration');
+      if (res.status === 404) throw new Error('Platform configuration route not found');
+      if (res.status === 200) {
+        warnLog('Platform config returned 200 without auth — verify auth enforcement');
+      }
     }
-  });
+  );
 
   await test('RC2-SYNC-02', 'Platform tenancy API responds (401 unauthenticated)', async () => {
     const res = await httpGet('/api/platform/tenancy');
@@ -490,14 +524,18 @@ async function runPlatformSyncTests(): Promise<void> {
   await test(
     'RC2-SYNC-07',
     'Workforce live sync validation — requires live Innovion Platform',
-    async () => { throw new Error('Requires live Innovion Platform connection'); },
+    async () => {
+      throw new Error('Requires live Innovion Platform connection');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires live Innovion Platform — Workforce sync endpoint not yet deployed'
   );
 
   await test(
     'RC2-SYNC-08',
     'Platform → Workforce data push validation',
-    async () => { throw new Error('Requires live Innovion Platform'); },
+    async () => {
+      throw new Error('Requires live Innovion Platform');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires live Innovion Platform — full stack integration test'
   );
 }
@@ -518,27 +556,34 @@ async function runOfflineTests(): Promise<void> {
   await test('RC2-OFF-02', 'Sync queue service file exists', async () => {
     // Validate the sync service infrastructure exists
     const res = await httpGet('/api/platform/configuration');
-    if (res.status === 404) throw new Error('Platform API not found — sync infrastructure missing');
+    if (res.status === 404)
+      throw new Error('Platform API not found — sync infrastructure missing');
   });
 
   await test(
     'RC2-OFF-03',
     'Offline queue creation and reconnect transmission — requires mobile device',
-    async () => { throw new Error('Requires mobile device'); },
+    async () => {
+      throw new Error('Requires mobile device');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires Innovion Workforce mobile app on physical device'
   );
 
   await test(
     'RC2-OFF-04',
     'Exponential backoff and jitter retry behaviour — requires mobile device',
-    async () => { throw new Error('Requires mobile device'); },
+    async () => {
+      throw new Error('Requires mobile device');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires Innovion Workforce mobile app on physical device'
   );
 
   await test(
     'RC2-OFF-05',
     'Idempotency — repeated transmission cannot create duplicate records',
-    async () => { throw new Error('Requires full stack'); },
+    async () => {
+      throw new Error('Requires full stack');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires full stack — Workforce + Platform + live Supabase write test'
   );
 }
@@ -549,12 +594,18 @@ async function runPushNotificationTests(): Promise<void> {
   title('AREA 12 — Push Notifications');
   divider();
 
-  await test('RC2-PUSH-01', 'Notification preferences table RLS blocks unauthenticated SELECT', async () => {
-    const { data } = await supabaseGet('notification_preferences', { select: 'id' });
-    if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} notification_preferences returned without authentication`);
+  await test(
+    'RC2-PUSH-01',
+    'Notification preferences table RLS blocks unauthenticated SELECT',
+    async () => {
+      const { data } = await supabaseGet('notification_preferences', { select: 'id' });
+      if (Array.isArray(data) && data.length > 0) {
+        throw new Error(
+          `RLS FAILURE: ${data.length} notification_preferences returned without authentication`
+        );
+      }
     }
-  });
+  );
 
   await test('RC2-PUSH-02', 'Notifications table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('notifications', { select: 'id,company_id' });
@@ -566,14 +617,18 @@ async function runPushNotificationTests(): Promise<void> {
   await test(
     'RC2-PUSH-03',
     'FCM push notification delivery — requires FCM production credentials',
-    async () => { throw new Error('Requires FCM credentials'); },
+    async () => {
+      throw new Error('Requires FCM credentials');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: FCM production configuration and APNs credentials not available in Rocket environment'
   );
 
   await test(
     'RC2-PUSH-04',
     'APNs push notification delivery — requires Apple Developer credentials',
-    async () => { throw new Error('Requires Apple credentials'); },
+    async () => {
+      throw new Error('Requires Apple credentials');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Apple Developer credentials, Team ID, APNs certificates not available in Rocket environment'
   );
 }
@@ -588,21 +643,24 @@ async function runPerformanceTests(): Promise<void> {
     const start = Date.now();
     await httpGet('/api/dashboard/summary');
     const elapsed = Date.now() - start;
-    if (elapsed > 1200) throw new Error(`Dashboard API took ${elapsed}ms — exceeds 1200ms target`);
+    if (elapsed > 1200)
+      throw new Error(`Dashboard API took ${elapsed}ms — exceeds 1200ms target`);
   });
 
   await test('RC2-PERF-02', 'Marketing home page responds within 2000ms', async () => {
     const start = Date.now();
     await httpGet('/marketing', 200);
     const elapsed = Date.now() - start;
-    if (elapsed > 2000) throw new Error(`Marketing page took ${elapsed}ms — exceeds 2000ms target`);
+    if (elapsed > 2000)
+      throw new Error(`Marketing page took ${elapsed}ms — exceeds 2000ms target`);
   });
 
   await test('RC2-PERF-03', 'Platform configuration API responds within 800ms', async () => {
     const start = Date.now();
     await httpGet('/api/platform/configuration');
     const elapsed = Date.now() - start;
-    if (elapsed > 800) throw new Error(`Platform config API took ${elapsed}ms — exceeds 800ms target`);
+    if (elapsed > 800)
+      throw new Error(`Platform config API took ${elapsed}ms — exceeds 800ms target`);
   });
 
   await test('RC2-PERF-04', 'Rate limiting is active on dashboard API', async () => {
@@ -614,7 +672,9 @@ async function runPerformanceTests(): Promise<void> {
     const statuses = await Promise.all(requests);
     const has429 = statuses.includes(429);
     if (!has429) {
-      warnLog('Rate limiter did not return 429 — in-memory store may have been reset between requests');
+      warnLog(
+        'Rate limiter did not return 429 — in-memory store may have been reset between requests'
+      );
       // Non-fatal: rate limit window may not have been reached in this test run
     }
   });
@@ -644,7 +704,8 @@ async function runAccessibilityTests(): Promise<void> {
     // AppLayout includes <a href="#main-content" className="skip-link"> — verified in source
     // This is a structural test — the component is confirmed present in AppLayout.tsx
     const res = await httpGet('/dashboard');
-    if (res.status === 404) throw new Error('Dashboard route not found — cannot verify skip link');
+    if (res.status === 404)
+      throw new Error('Dashboard route not found — cannot verify skip link');
     // Skip link presence is confirmed in AppLayout.tsx source code review
   });
 
@@ -677,7 +738,8 @@ async function runProductionReadinessTests(): Promise<void> {
   await test('RC2-PROD-03', 'NEXT_PUBLIC_SITE_URL is set to HTTPS production domain', async () => {
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL;
     if (!siteUrl) throw new Error('NEXT_PUBLIC_SITE_URL is not set');
-    if (siteUrl.includes('localhost')) throw new Error('SITE_URL is set to localhost — update to production domain');
+    if (siteUrl.includes('localhost'))
+      throw new Error('SITE_URL is set to localhost — update to production domain');
     try {
       const url = new URL(siteUrl);
       if (url.protocol !== 'https:') throw new Error('SITE_URL must use HTTPS');
@@ -689,7 +751,8 @@ async function runProductionReadinessTests(): Promise<void> {
   await test('RC2-PROD-04', 'SQL injection probe returns non-500', async () => {
     const maliciousPath = "/api/dashboard/summary?id=1' OR '1'='1";
     const res = await fetch(`${BASE_URL}${maliciousPath}`, { redirect: 'manual' });
-    if (res.status === 500) throw new Error('SQL injection probe returned 500 — possible unhandled error');
+    if (res.status === 500)
+      throw new Error('SQL injection probe returned 500 — possible unhandled error');
   });
 
   await test('RC2-PROD-05', 'Path traversal probe returns non-500', async () => {
@@ -702,7 +765,9 @@ async function runProductionReadinessTests(): Promise<void> {
   await test('RC2-PROD-06', 'Settings table RLS blocks unauthenticated SELECT', async () => {
     const { data } = await supabaseGet('settings', { select: 'id,company_id' });
     if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} settings records returned without authentication`);
+      throw new Error(
+        `RLS FAILURE: ${data.length} settings records returned without authentication`
+      );
     }
   });
 
@@ -713,19 +778,31 @@ async function runProductionReadinessTests(): Promise<void> {
     }
   });
 
-  await test('RC2-PROD-08', 'Provider integrations table RLS blocks unauthenticated SELECT', async () => {
-    const { data } = await supabaseGet('provider_integrations', { select: 'id,company_id' });
-    if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} provider_integrations returned without authentication`);
+  await test(
+    'RC2-PROD-08',
+    'Provider integrations table RLS blocks unauthenticated SELECT',
+    async () => {
+      const { data } = await supabaseGet('provider_integrations', { select: 'id,company_id' });
+      if (Array.isArray(data) && data.length > 0) {
+        throw new Error(
+          `RLS FAILURE: ${data.length} provider_integrations returned without authentication`
+        );
+      }
     }
-  });
+  );
 
-  await test('RC2-PROD-09', 'Role permissions table RLS blocks unauthenticated SELECT', async () => {
-    const { data } = await supabaseGet('role_permissions', { select: 'id,company_id' });
-    if (Array.isArray(data) && data.length > 0) {
-      throw new Error(`RLS FAILURE: ${data.length} role_permissions returned without authentication`);
+  await test(
+    'RC2-PROD-09',
+    'Role permissions table RLS blocks unauthenticated SELECT',
+    async () => {
+      const { data } = await supabaseGet('role_permissions', { select: 'id,company_id' });
+      if (Array.isArray(data) && data.length > 0) {
+        throw new Error(
+          `RLS FAILURE: ${data.length} role_permissions returned without authentication`
+        );
+      }
     }
-  });
+  );
 
   await test('RC2-PROD-10', 'Robots.txt is present', async () => {
     const res = await httpGet('/robots.txt', 200);
@@ -778,10 +855,26 @@ async function runEndToEndTests(): Promise<void> {
 
   await test('RC2-E2E-03', 'All core app routes are registered (non-404)', async () => {
     const routes = [
-      '/dashboard', '/jobs', '/scheduling', '/checklists', '/compliance',
-      '/documents', '/employees', '/contractors', '/clients', '/sites',
-      '/inventory', '/vehicles', '/reports', '/settings', '/profile',
-      '/notifications', '/billing', '/users', '/workforce-roster', '/workforce-capacity',
+      '/dashboard',
+      '/jobs',
+      '/scheduling',
+      '/checklists',
+      '/compliance',
+      '/documents',
+      '/employees',
+      '/contractors',
+      '/clients',
+      '/sites',
+      '/inventory',
+      '/vehicles',
+      '/reports',
+      '/settings',
+      '/profile',
+      '/notifications',
+      '/billing',
+      '/users',
+      '/workforce-roster',
+      '/workforce-capacity',
     ];
     const failures: string[] = [];
     for (const route of routes) {
@@ -813,24 +906,28 @@ async function runEndToEndTests(): Promise<void> {
   await test(
     'RC2-E2E-05',
     'Full authenticated user journey — requires live test user credentials',
-    async () => { throw new Error('Requires live test user credentials'); },
+    async () => {
+      throw new Error('Requires live test user credentials');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires live Innovion Platform test user credentials for authenticated flow'
   );
 
   await test(
     'RC2-E2E-06',
     'Real job creation → assignment → completion → sync — requires full stack',
-    async () => { throw new Error('Requires full stack'); },
+    async () => {
+      throw new Error('Requires full stack');
+    },
     'BLOCKED — EXTERNAL EXECUTION REQUIRED: Requires full stack — live Platform + Workforce + authenticated test users'
   );
 }
 
 // ─── Summary report ───────────────────────────────────────────────────────────
 function printSummary(): void {
-  const passed  = results.filter((r) => r.status === 'PASS').length;
-  const failed  = results.filter((r) => r.status === 'FAIL').length;
+  const passed = results.filter((r) => r.status === 'PASS').length;
+  const failed = results.filter((r) => r.status === 'FAIL').length;
   const blocked = results.filter((r) => r.status === 'BLOCKED').length;
-  const total   = results.length;
+  const total = results.length;
 
   console.log('\n');
   divider();
@@ -864,17 +961,24 @@ function printSummary(): void {
 
   divider();
 
-  const recommendation = failed === 0
-    ? `${GREEN}${BOLD}✔ ALL EXECUTABLE TESTS PASSED${RESET}`
-    : `${RED}${BOLD}✘ ${failed} TEST(S) FAILED — REVIEW REQUIRED${RESET}`;
+  const recommendation =
+    failed === 0
+      ? `${GREEN}${BOLD}✔ ALL EXECUTABLE TESTS PASSED${RESET}`
+      : `${RED}${BOLD}✘ ${failed} TEST(S) FAILED — REVIEW REQUIRED${RESET}`;
   console.log(`\n  ${recommendation}\n`);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main(): Promise<void> {
-  console.log(`\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}`);
-  console.log(`${BOLD}${CYAN}║  INNOVION RC2 TEST SUITE — PILOT READINESS BUILD PACKAGE STEP 1     ║${RESET}`);
-  console.log(`${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}`);
+  console.log(
+    `\n${BOLD}${CYAN}╔══════════════════════════════════════════════════════════════════════╗${RESET}`
+  );
+  console.log(
+    `${BOLD}${CYAN}║  INNOVION RC2 TEST SUITE — PILOT READINESS BUILD PACKAGE STEP 1     ║${RESET}`
+  );
+  console.log(
+    `${BOLD}${CYAN}╚══════════════════════════════════════════════════════════════════════╝${RESET}`
+  );
   console.log(`  Target: ${CYAN}${BASE_URL}${RESET}`);
   console.log(`  Time:   ${new Date().toISOString()}`);
 
@@ -905,3 +1009,12 @@ main().catch((err) => {
   console.error(`${RED}${BOLD}Fatal error:${RESET}`, err);
   process.exit(1);
 });
+
+// This file is a standalone CLI script. The empty export makes it a MODULE
+// rather than a global script: without it TypeScript places every top-level
+// binding in the global scope, and the six scripts in this directory then
+// collide on shared names (GREEN, RED, results, title, BASE_URL, ...),
+// producing dozens of spurious TS2451/TS6200/TS2393 errors. That noise was a
+// significant reason 	ype-check was never green and was suppressed at build
+// time via next.config.mjs.
+export {};

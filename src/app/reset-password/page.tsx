@@ -49,13 +49,17 @@ export default function ResetPasswordPage() {
     // Supabase sets the session from the URL hash automatically on page load
     // We just need to verify a session exists
     const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         setSessionReady(true);
       } else {
         // Wait briefly for the hash-based session to be processed
         setTimeout(async () => {
-          const { data: { session: retrySession } } = await supabase.auth.getSession();
+          const {
+            data: { session: retrySession },
+          } = await supabase.auth.getSession();
           if (retrySession) {
             setSessionReady(true);
           } else {
@@ -75,7 +79,9 @@ export default function ResetPasswordPage() {
       setSuccess(true);
       setTimeout(() => router.push('/sign-up-login'), 3000);
     } catch (error: unknown) {
-      setSubmitError((error as { message?: string })?.message || 'Failed to update password. Please try again.');
+      setSubmitError(
+        (error as { message?: string })?.message || 'Failed to update password. Please try again.'
+      );
     }
   };
 
@@ -88,8 +94,10 @@ export default function ResetPasswordPage() {
         </div>
         <div>
           <h1 className="text-4xl xl:text-5xl font-800 text-white leading-tight">
-            Secure your<br />
-            <span style={{ color: '#60A5FA' }}>account,</span><br />
+            Secure your
+            <br />
+            <span style={{ color: '#60A5FA' }}>account,</span>
+            <br />
             stay in control.
           </h1>
           <p className="text-lg mt-6 leading-relaxed" style={{ color: 'rgba(203,213,225,0.8)' }}>
@@ -99,17 +107,23 @@ export default function ResetPasswordPage() {
         <div className="flex items-center gap-6">
           <div className="text-center">
             <p className="text-2xl font-800 text-white">256-bit</p>
-            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>AES Encryption</p>
+            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>
+              AES Encryption
+            </p>
           </div>
           <div className="w-px h-10" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
           <div className="text-center">
             <p className="text-2xl font-800 text-white">SOC 2</p>
-            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>Compliant</p>
+            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>
+              Compliant
+            </p>
           </div>
           <div className="w-px h-10" style={{ backgroundColor: 'rgba(255,255,255,0.1)' }} />
           <div className="text-center">
             <p className="text-2xl font-800 text-white">99.9%</p>
-            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>Uptime</p>
+            <p className="text-xs font-500 mt-0.5" style={{ color: 'rgba(203,213,225,0.6)' }}>
+              Uptime
+            </p>
           </div>
         </div>
       </div>
@@ -185,17 +199,29 @@ export default function ResetPasswordPage() {
               {submitError && (
                 <div
                   className="flex items-start gap-3 p-3 rounded-xl mb-5 border"
-                  style={{ backgroundColor: 'var(--danger-bg, #fee2e2)', borderColor: 'rgba(239,68,68,0.3)' }}
+                  style={{
+                    backgroundColor: 'var(--danger-bg, #fee2e2)',
+                    borderColor: 'rgba(239,68,68,0.3)',
+                  }}
                 >
-                  <AlertCircle size={16} className="flex-shrink-0 mt-0.5" style={{ color: '#ef4444' }} />
-                  <p className="text-sm font-500" style={{ color: '#ef4444' }}>{submitError}</p>
+                  <AlertCircle
+                    size={16}
+                    className="flex-shrink-0 mt-0.5"
+                    style={{ color: '#ef4444' }}
+                  />
+                  <p className="text-sm font-500" style={{ color: '#ef4444' }}>
+                    {submitError}
+                  </p>
                 </div>
               )}
 
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5" noValidate>
                 {/* New password */}
                 <div>
-                  <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="new-password">
+                  <label
+                    className="block text-sm font-600 text-foreground mb-1.5"
+                    htmlFor="new-password"
+                  >
                     New password
                   </label>
                   <div className="relative">
@@ -220,7 +246,9 @@ export default function ResetPasswordPage() {
                     </button>
                   </div>
                   {errors.password && (
-                    <p className="text-xs mt-1.5 font-500" style={{ color: '#ef4444' }}>{errors.password.message}</p>
+                    <p className="text-xs mt-1.5 font-500" style={{ color: '#ef4444' }}>
+                      {errors.password.message}
+                    </p>
                   )}
                   {/* Strength bar */}
                   {passwordValue && (
@@ -231,7 +259,8 @@ export default function ResetPasswordPage() {
                             key={i}
                             className="h-1 flex-1 rounded-full transition-all duration-300"
                             style={{
-                              backgroundColor: i <= strength.score ? strength.color : 'var(--border)',
+                              backgroundColor:
+                                i <= strength.score ? strength.color : 'var(--border)',
                             }}
                           />
                         ))}
@@ -245,7 +274,10 @@ export default function ResetPasswordPage() {
 
                 {/* Confirm password */}
                 <div>
-                  <label className="block text-sm font-600 text-foreground mb-1.5" htmlFor="confirm-password">
+                  <label
+                    className="block text-sm font-600 text-foreground mb-1.5"
+                    htmlFor="confirm-password"
+                  >
                     Confirm new password
                   </label>
                   <div className="relative">
@@ -270,7 +302,9 @@ export default function ResetPasswordPage() {
                     </button>
                   </div>
                   {errors.confirmPassword && (
-                    <p className="text-xs mt-1.5 font-500" style={{ color: '#ef4444' }}>{errors.confirmPassword.message}</p>
+                    <p className="text-xs mt-1.5 font-500" style={{ color: '#ef4444' }}>
+                      {errors.confirmPassword.message}
+                    </p>
                   )}
                 </div>
 

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-  useCallback,
-  type ReactNode,
-} from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -27,11 +20,7 @@ import {
   type TaxCalculation,
 } from '@/lib/localisation';
 import { getCountryConfig, getPrimaryTaxRule } from '@/lib/countryConfig';
-import {
-  getTranslations,
-  DEFAULT_LANGUAGE,
-  type Language,
-} from '@/lib/i18n';
+import { getTranslations, DEFAULT_LANGUAGE, type Language } from '@/lib/i18n';
 
 // ─── Context Types ────────────────────────────────────────────────────────────
 
@@ -71,7 +60,13 @@ export function useLocalisation(): LocalisationContextValue {
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
 export function LocalisationProvider({ children }: { children: ReactNode }) {
-  const { user } = useAuth();
+  // Take the tenant from AuthContext, which resolves it authoritatively from
+  // user_roles. The previous implementation re-queried user_roles with
+  // `.eq('user_id', ...).maybeSingle()`, which RAISES for any user who belongs
+  // to more than one tenant — the whole localisation layer then silently fell
+  // back to Australian defaults for those users (currency, tax rate, date
+  // format and measurement system all wrong).
+  const { user, companyId } = useAuth();
   const supabase = createClient();
   const [settings, setSettings] = useState<LocalisationSettings>(DEFAULT_LOCALISATION);
   const [language, setLanguageState] = useState<Language>(DEFAULT_LANGUAGE);
@@ -86,14 +81,7 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
 
     const loadSettings = async () => {
       try {
-        // Get the user's company_id from user_roles
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!roleData?.company_id) {
+        if (!companyId) {
           setIsLoading(false);
           return;
         }
@@ -101,7 +89,7 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
         const { data: locData } = await supabase
           .from('company_localisation')
           .select('*')
-          .eq('company_id', roleData.company_id)
+          .eq('company_id', companyId)
           .maybeSingle();
 
         if (locData) {
@@ -110,10 +98,13 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
             language: locData.language ?? DEFAULT_LOCALISATION.language,
             currencyCode: locData.currency_code ?? DEFAULT_LOCALISATION.currencyCode,
             currencySymbol: locData.currency_symbol ?? DEFAULT_LOCALISATION.currencySymbol,
-            currencyDecimalPrecision: locData.currency_decimal_precision ?? DEFAULT_LOCALISATION.currencyDecimalPrecision,
-            thousandsSeparator: locData.thousands_separator ?? DEFAULT_LOCALISATION.thousandsSeparator,
+            currencyDecimalPrecision:
+              locData.currency_decimal_precision ?? DEFAULT_LOCALISATION.currencyDecimalPrecision,
+            thousandsSeparator:
+              locData.thousands_separator ?? DEFAULT_LOCALISATION.thousandsSeparator,
             decimalSeparator: locData.decimal_separator ?? DEFAULT_LOCALISATION.decimalSeparator,
-            currencySymbolPosition: locData.currency_symbol_position ?? DEFAULT_LOCALISATION.currencySymbolPosition,
+            currencySymbolPosition:
+              locData.currency_symbol_position ?? DEFAULT_LOCALISATION.currencySymbolPosition,
             timezone: locData.timezone ?? DEFAULT_LOCALISATION.timezone,
             dateFormat: locData.date_format ?? DEFAULT_LOCALISATION.dateFormat,
             timeFormat: locData.time_format ?? DEFAULT_LOCALISATION.timeFormat,
@@ -150,7 +141,7 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
     };
 
     loadSettings();
-  }, [user]);
+  }, [user, companyId]);
 
   const setLanguage = useCallback((lang: Language) => {
     setLanguageState(lang);
@@ -162,19 +153,11 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
       const next = { ...settings, ...partial };
       setSettings(next);
 
-      if (!user) return;
+      if (!user || !companyId) return;
       try {
-        const { data: roleData } = await supabase
-          .from('user_roles')
-          .select('company_id')
-          .eq('user_id', user.id)
-          .maybeSingle();
-
-        if (!roleData?.company_id) return;
-
         await supabase.from('company_localisation').upsert(
           {
-            company_id: roleData.company_id,
+            company_id: companyId,
             country: next.country,
             language: next.language,
             currency_code: next.currencyCode,
@@ -196,7 +179,7 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
         // Persist failure is non-fatal; UI already updated
       }
     },
-    [settings, user]
+    [settings, user, companyId]
   );
 
   // Derive tax info from country config
@@ -238,9 +221,5 @@ export function LocalisationProvider({ children }: { children: ReactNode }) {
     isLoading,
   };
 
-  return (
-    <LocalisationContext.Provider value={value}>
-      {children}
-    </LocalisationContext.Provider>
-  );
+  return <LocalisationContext.Provider value={value}>{children}</LocalisationContext.Provider>;
 }
