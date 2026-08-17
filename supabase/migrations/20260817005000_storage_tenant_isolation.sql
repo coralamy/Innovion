@@ -121,11 +121,31 @@ UPDATE storage.buckets SET public = false WHERE id = 'documents';
 DO $$
 DECLARE bad text;
 BEGIN
+  /*
+   * A/B/D INTEGRATION CORRECTION.
+   *
+   * The original test demanded the literal predicate `innovion_storage_tenant`.
+   * Team B's 20260817000003 installs its own documents-bucket policies
+   * (documents_select_own / _insert_own / _update_own / _delete_own) which are
+   * tenant-scoped through `public.get_my_company_id()` — a different, equally
+   * authoritative resolver. Demanding one particular spelling aborted this
+   * migration on policies that were not in fact defective.
+   *
+   * The test now asks the real question: does every documents-bucket policy
+   * carry SOME recognised tenant predicate?
+   *
+   * NOTE: passing this guard does not mean the combined policy set is safe.
+   * Permissive policies OR together, so Team A's admin-only DELETE is widened
+   * by Team B's member-level DELETE. That is a genuine integration defect and
+   * is resolved by unifying the set in 20260818000100 — this guard only ensures
+   * no policy is tenant-blind.
+   */
   SELECT string_agg(policyname, ', ') INTO bad
   FROM pg_policies
   WHERE schemaname = 'storage'
     AND policyname LIKE 'documents_%'
-    AND COALESCE(qual, with_check, '') NOT LIKE '%innovion_storage_tenant%';
+    AND COALESCE(qual, '') || COALESCE(with_check, '') !~
+        '(innovion_storage_tenant|get_my_company_id|innovion_auth_company_ids|get_my_contractor_id)';
 
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'Storage policy without a tenant predicate: %', bad;

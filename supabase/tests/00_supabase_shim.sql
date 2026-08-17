@@ -17,12 +17,20 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO anon, authentic
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO anon, authenticated, service_role;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO anon, authenticated, service_role;
 
+-- Columns mirror the subset of GoTrue's auth.users that the Innovion migrations
+-- actually read. `email_confirmed_at` in particular is load-bearing: Team B
+-- reads it to decide whether an address may be used as a tenant selector, and
+-- Team D reads it in its new-user trigger.
 CREATE TABLE IF NOT EXISTS auth.users (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   email text UNIQUE,
+  email_confirmed_at timestamptz,
+  phone text,
+  last_sign_in_at timestamptz,
   raw_user_meta_data jsonb DEFAULT '{}'::jsonb,
   raw_app_meta_data  jsonb DEFAULT '{}'::jsonb,
-  created_at timestamptz DEFAULT now()
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
 -- session-local JWT claims, mirroring Supabase GoTrue

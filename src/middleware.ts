@@ -49,8 +49,31 @@ const PUBLIC_PREFIXES = [
  * session:
  *   /api/platform/*              — Bearer platform API key (see platformApiAuth)
  *   /api/integrations/webhooks/* — provider HMAC signature, no user present
+ *   /api/workforce/*             — Bearer Supabase user JWT (see workforceAuth)
+ *
+ * DEFECT INTRODUCED BY THIS MIDDLEWARE AND FIXED HERE:
+ *   `/api/workforce/*` was missing from this list. The Innovion Workforce
+ *   mobile client authenticates with `Authorization: Bearer <access token>` and
+ *   sends NO cookies — it is not a browser and holds no cookie jar for this
+ *   origin. The middleware looked for a session cookie, found none, and
+ *   returned its own 401 before the route ran, so
+ *   `authenticateWorkforceRequest()` never executed and the DEP-1 endpoint
+ *   could not have worked for the one client it exists to serve.
+ *
+ *   Found by probing the running build: the 401 carried neither the
+ *   `WWW-Authenticate: Bearer` header nor the `Cache-Control: private,
+ *   no-store` that the route sets, which is what revealed the response was not
+ *   coming from the route at all.
+ *
+ *   Listing the prefix here weakens nothing. Every route beneath it verifies
+ *   its bearer token against the auth server and resolves the tenant from
+ *   authoritative membership; none of them trusts a cookie.
  */
-const SELF_AUTHENTICATING_API_PREFIXES = ['/api/platform', '/api/integrations/webhooks'];
+const SELF_AUTHENTICATING_API_PREFIXES = [
+  '/api/platform',
+  '/api/integrations/webhooks',
+  '/api/workforce',
+];
 
 /** Signed-in users have no reason to see these; send them to the product. */
 const AUTH_ONLY_PREFIXES = ['/sign-up-login'];

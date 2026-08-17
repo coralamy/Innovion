@@ -935,11 +935,19 @@ async function main() {
     );
   }
   {
+    // Mirrors the corrected guard in migration 20260817002000: flag a function
+    // only when it reads an AUTHORITY key out of client-writable metadata AND
+    // does not validate that read against an authoritative membership source.
+    // Reading metadata for display data (full_name, avatar_url) is not
+    // authority; and the A/B/D unified resolver validates through
+    // innovion_tenant_ids() rather than naming user_roles directly.
     const rows =
       await q(`select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace
                           where n.nspname='public' and p.prokind='f'
-                            and pg_get_functiondef(p.oid) ~ '(user_metadata|raw_user_meta_data)'
-                            and pg_get_functiondef(p.oid) not like '%user_roles%'`);
+                            and pg_get_functiondef(p.oid) ~
+                                '(user_metadata|raw_user_meta_data|raw_app_meta_data)[^;]{0,80}(company_id|tenant_id|platform_role|''role''|is_admin)'
+                            and pg_get_functiondef(p.oid) !~
+                                '(user_roles|innovion_tenant_ids|identity_tenant_memberships|identity_user_profiles|public\\.contractors)'`);
     check(
       'no function derives tenant identity from metadata unvalidated',
       rows.length === 0,

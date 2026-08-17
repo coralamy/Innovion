@@ -48,7 +48,22 @@ ALTER TABLE public.notification_preferences ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (
     SELECT 1 FROM pg_policies
-    WHERE tablename = 'notification_preferences' AND policyname = 'Users manage own notification preferences'
+    WHERE tablename = 'notification_preferences'
+      AND policyname IN (
+        'Users manage own notification preferences',
+        -- 20260817007000 replaced the policy above with this one, restricted
+        -- TO authenticated rather than TO public. Both names are checked so
+        -- that RE-APPLYING this migration cannot resurrect the superseded,
+        -- anon-facing policy.
+        --
+        -- Re-application is a live possibility: this migration's version
+        -- (20260807050000) collides with Team D's
+        -- 20260807050000_platform_foundation_schema.sql, and `version` is the
+        -- primary key of supabase_migrations.schema_migrations, so one of the
+        -- two must be rebased before A and D can share a project. Whichever is
+        -- rebased is re-applied. This migration is now safe under that.
+        'notification_preferences_own'
+      )
   ) THEN
     CREATE POLICY "Users manage own notification preferences"
       ON public.notification_preferences

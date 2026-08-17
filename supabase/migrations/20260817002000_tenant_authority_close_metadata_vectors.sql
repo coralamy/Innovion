@@ -74,6 +74,34 @@ BEGIN
     RAISE EXCEPTION 'Tenant authority regression in policies: %', bad_policies;
   END IF;
 
+  /*
+   * A/B/D INTEGRATION CORRECTION.
+   *
+   * The original test was "mentions metadata AND does not mention user_roles".
+   * That is too crude once other teams' functions share the schema, and it
+   * produced a false positive that aborted this migration in the integrated
+   * chain:
+   *
+   *   Team D's public.handle_platform_new_user() reads
+   *     NEW.raw_user_meta_data->>'full_name'
+   *     NEW.raw_user_meta_data->>'avatar_url'
+   *   and hard-codes 'end_user' for the role and a fixed root tenant. It reads
+   *   metadata for DISPLAY DATA ONLY and takes no authority from it — which is
+   *   exactly the distinction 20260817001000 documents as acceptable.
+   *
+   * The test is now what it should always have been: flag a function only when
+   * it reads an AUTHORITY key out of client-writable metadata, and does not
+   * validate that read against an authoritative membership table.
+   *
+   * Authority keys: company_id, tenant_id, role (incl. platform_role),
+   * is_admin/admin. Display keys such as full_name and avatar_url are not
+   * authority and never were.
+   *
+   * Authoritative tables: public.user_roles (Team A), public.contractors
+   * (Team B — a contractor's company_id is a platform-managed column, guarded
+   * by contractors_protect_authority_columns), and Team D's
+   * identity_tenant_memberships / identity_user_profiles.
+   */
   SELECT string_agg(p.proname, ', ')
     INTO bad_functions
   FROM pg_proc p
@@ -82,10 +110,10 @@ BEGIN
     -- prokind 'f' only: pg_get_functiondef() raises on aggregates ('a'),
     -- window functions ('w') and procedures ('p').
     AND p.prokind = 'f'
-    AND pg_get_functiondef(p.oid) ~ '(user_metadata|raw_user_meta_data)'
-    -- get_my_company_id legitimately reads metadata as a SELECTOR, but only
-    -- ever validated against public.user_roles in the same statement.
-    AND pg_get_functiondef(p.oid) NOT LIKE '%user_roles%';
+    AND pg_get_functiondef(p.oid) ~
+        '(user_metadata|raw_user_meta_data|raw_app_meta_data)[^;]{0,80}(company_id|tenant_id|platform_role|''role''|>>\s*''role''|is_admin)'
+    AND pg_get_functiondef(p.oid) !~
+        '(user_roles|identity_tenant_memberships|identity_user_profiles|public\.contractors)';
 
   IF bad_functions IS NOT NULL THEN
     RAISE EXCEPTION

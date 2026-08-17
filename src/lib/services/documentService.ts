@@ -65,12 +65,50 @@ export function sanitiseFilename(filename: string): string {
 }
 
 /**
- * Build a company-scoped storage path to enforce tenant isolation.
- * Format: {companyId}/{sanitisedFilename}
+ * Build a tenant-scoped storage path.
+ *
+ * Format: `{companyId}/{userId}/{sanitisedFilename}`
+ *
+ * ---------------------------------------------------------------------------
+ * A/B/D INTEGRATION: the second segment matters.
+ *
+ * This previously produced `{companyId}/{filename}`. Tenant isolation is
+ * enforced on the FIRST segment, so that was sufficient for the Platform alone
+ * and remains so.
+ *
+ * It is not sufficient once the Workforce app shares the bucket. Team B's
+ * migration 20260817000003 installs a RESTRICTIVE policy that confines a
+ * workforce-only user to their own files:
+ *
+ *     workforce_documents_own_files_only  RESTRICTIVE FOR SELECT
+ *       USING ( bucket_id <> 'documents'
+ *               OR NOT public.is_workforce_only_user()
+ *               OR (storage.foldername(name))[2] = auth.uid()::text   -- current
+ *               OR (storage.foldername(name))[1] = auth.uid()::text ) -- historic
+ *
+ * A restrictive policy ANDs with everything else, so an object written at
+ * `{companyId}/{filename}` has no second segment to match and is unreadable by
+ * the very worker who uploaded it. The Platform would list the document (the
+ * `documents` row is visible to them) and the download would fail.
+ *
+ * Writing `{companyId}/{userId}/{filename}` satisfies both controls at once:
+ * segment 1 is still the tenant, so Team A's `innovion_storage_tenant_ok()` and
+ * the tenant-folder predicate are unaffected; segment 2 is the uploader, so
+ * Team B's worker predicate matches.
+ *
+ * RESIDUAL, AND DELIBERATE: a workforce-only user still cannot read documents
+ * uploaded by someone else, including Platform staff. That is Team B's control,
+ * not an accident of this change, and it is theirs to relax. Platform staff are
+ * not workforce-only and continue to see everything in their tenant.
+ *
+ * EXISTING OBJECTS: objects already written as `{companyId}/{filename}` remain
+ * readable — `documents_select_policy` accepts the tenant folder — so nothing
+ * is orphaned by this change.
+ * ---------------------------------------------------------------------------
  */
-export function buildStoragePath(companyId: string, filename: string): string {
+export function buildStoragePath(companyId: string, userId: string, filename: string): string {
   const safe = sanitiseFilename(filename);
-  return `${companyId}/${safe}`;
+  return `${companyId}/${userId}/${safe}`;
 }
 
 export const documentService = {
@@ -153,7 +191,20 @@ export const documentService = {
       return null;
     }
 
-    const storagePath = buildStoragePath(companyId, file.name);
+    // The SECOND segment must be the uploader — see buildStoragePath. Without a
+    // session there is no uploader, and an object written without one is
+    // unreadable to a workforce user under Team B's restrictive policy.
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) {
+      logger.error('documentService', 'Refusing upload without an authenticated user', {
+        companyId,
+      });
+      return null;
+    }
+
+    const storagePath = buildStoragePath(companyId, user.id, file.name);
 
     // Validate MIME type server-side before upload
     const allowedMimeTypes = [

@@ -225,13 +225,18 @@ for (const name of TRAVERSALS) {
 }
 
 {
+  // The A/B/D layout is <company_id>/<user_id>/<file>: segment 1 is the tenant
+  // boundary Team A enforces, segment 2 is the uploader that Team B's
+  // restrictive `workforce_documents_own_files_only` policy matches on. A
+  // traversal payload must not be able to escape either segment.
   const tenant = 'aaaaaaaa-0000-0000-0000-00000000000a';
+  const uploader = '77777777-7777-7777-7777-777777777777';
   for (const name of TRAVERSALS) {
-    const path = buildStoragePath(tenant, name);
+    const path = buildStoragePath(tenant, uploader, name);
     const segments = path.split('/');
     check(
-      `buildStoragePath keeps ${JSON.stringify(name)} inside the tenant folder`,
-      segments[0] === tenant && segments.length === 2,
+      `buildStoragePath keeps ${JSON.stringify(name)} inside <tenant>/<uploader>/`,
+      segments[0] === tenant && segments[1] === uploader && segments.length === 3,
       `→ ${path}`
     );
   }
