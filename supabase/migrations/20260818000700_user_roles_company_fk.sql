@@ -90,17 +90,59 @@ BEGIN
 END $$;
 
 -- ── The foreign key ─────────────────────────────────────────────────────────
+--
+-- PRODUCTION ALREADY HAS ONE, AND IT IS THE WRONG ONE.
+--
+-- Read-only inspection of the live project on 2026-08-18 found
+-- user_roles_company_id_fkey already present, hand-added outside the migration
+-- chain, with ON DELETE NO ACTION. The first version of this block only created
+-- the constraint when none existed, so against production it would skip
+-- creation and then fail its own guard below. The restored-copy rehearsal
+-- reproduced that exactly: one abort, this migration, on a faithful copy of the
+-- live baseline.
+--
+-- So the existing constraint is REPLACED rather than left alone. NO ACTION is
+-- not a weaker version of the same thing — it means deleting a company is
+-- refused while any role grant still references it, so tenant deletion fails
+-- instead of cascading, and the grants outlive nothing. CASCADE is what the
+-- other twelve companies foreign keys in this schema do, and what Team D's
+-- platform_tenants.company_id does.
+--
+-- Dropping and re-adding takes a brief ACCESS EXCLUSIVE lock on user_roles and
+-- re-validates the constraint. On a table of this size that is milliseconds,
+-- and the rows were already validated by the constraint being replaced.
 DO $$
+DECLARE
+  existing_name text;
+  existing_del  char;
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_constraint
-    WHERE conrelid = 'public.user_roles'::regclass
-      AND confrelid = 'public.companies'::regclass
-      AND contype = 'f'
-  ) THEN
+  SELECT conname, confdeltype INTO existing_name, existing_del
+    FROM pg_constraint
+   WHERE conrelid  = 'public.user_roles'::regclass
+     AND confrelid = 'public.companies'::regclass
+     AND contype   = 'f'
+   LIMIT 1;
+
+  IF existing_name IS NULL THEN
     ALTER TABLE public.user_roles
       ADD CONSTRAINT user_roles_company_id_fkey
       FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+    RAISE NOTICE 'user_roles -> companies foreign key created.';
+
+  ELSIF existing_del <> 'c' THEN
+    RAISE NOTICE
+      'Replacing user_roles foreign key % : ON DELETE % -> CASCADE.',
+      existing_name,
+      CASE existing_del WHEN 'a' THEN 'NO ACTION' WHEN 'r' THEN 'RESTRICT'
+                        WHEN 'n' THEN 'SET NULL'  WHEN 'd' THEN 'SET DEFAULT'
+                        ELSE existing_del::text END;
+    EXECUTE format('ALTER TABLE public.user_roles DROP CONSTRAINT %I', existing_name);
+    ALTER TABLE public.user_roles
+      ADD CONSTRAINT user_roles_company_id_fkey
+      FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE CASCADE;
+
+  ELSE
+    RAISE NOTICE 'user_roles -> companies foreign key already ON DELETE CASCADE.';
   END IF;
 END $$;
 
