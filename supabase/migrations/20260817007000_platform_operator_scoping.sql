@@ -81,8 +81,10 @@ CREATE POLICY "platform_operators_read"
   USING (user_id = auth.uid() OR public.innovion_is_platform_operator());
 
 -- ── partners ────────────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "partners_select"      ON public.partners;
-DROP POLICY IF EXISTS "partners_admin_write" ON public.partners;
+DROP POLICY IF EXISTS "partners_select"        ON public.partners;
+DROP POLICY IF EXISTS "partners_admin_write"   ON public.partners;
+DROP POLICY IF EXISTS "partners_operator_read" ON public.partners;
+DROP POLICY IF EXISTS "partners_operator_write" ON public.partners;
 
 CREATE POLICY "partners_operator_read"
   ON public.partners FOR SELECT TO authenticated
@@ -94,8 +96,10 @@ CREATE POLICY "partners_operator_write"
   WITH CHECK (public.innovion_is_platform_operator());
 
 -- ── partner_products ────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "partner_products_select"      ON public.partner_products;
-DROP POLICY IF EXISTS "partner_products_admin_write" ON public.partner_products;
+DROP POLICY IF EXISTS "partner_products_select"         ON public.partner_products;
+DROP POLICY IF EXISTS "partner_products_admin_write"    ON public.partner_products;
+DROP POLICY IF EXISTS "partner_products_operator_read"  ON public.partner_products;
+DROP POLICY IF EXISTS "partner_products_operator_write" ON public.partner_products;
 
 CREATE POLICY "partner_products_operator_read"
   ON public.partner_products FOR SELECT TO authenticated
@@ -107,7 +111,9 @@ CREATE POLICY "partner_products_operator_write"
   WITH CHECK (public.innovion_is_platform_operator());
 
 -- ── partner_revenue ─────────────────────────────────────────────────────────
-DROP POLICY IF EXISTS "partner_revenue_admin" ON public.partner_revenue;
+DROP POLICY IF EXISTS "partner_revenue_admin"          ON public.partner_revenue;
+DROP POLICY IF EXISTS "partner_revenue_read"           ON public.partner_revenue;
+DROP POLICY IF EXISTS "partner_revenue_operator_write" ON public.partner_revenue;
 
 CREATE POLICY "partner_revenue_read"
   ON public.partner_revenue FOR SELECT TO authenticated
@@ -145,6 +151,7 @@ CREATE POLICY "coralamy_products_select"
 -- Predicate was already `auth.uid() = user_id` and so returned nothing for the
 -- anonymous role, but a per-user policy must not be offered to `anon` at all.
 DROP POLICY IF EXISTS "Users manage own notification preferences" ON public.notification_preferences;
+DROP POLICY IF EXISTS "notification_preferences_own"                ON public.notification_preferences;
 CREATE POLICY "notification_preferences_own"
   ON public.notification_preferences FOR ALL TO authenticated
   USING      (user_id = auth.uid())
@@ -158,7 +165,27 @@ BEGIN
   FROM pg_policies
   WHERE schemaname = 'public'
     AND tablename IN ('partners','partner_products','partner_revenue','coralamy_products')
-    AND COALESCE(qual,'') || COALESCE(with_check,'') NOT LIKE '%innovion_is_platform_operator%';
+    /*
+     * Accepts EITHER platform predicate.
+     *
+     * When written, `innovion_is_platform_operator()` was the only one. The
+     * A/B/D reconciliation (20260818000100) splits platform authority into two
+     * tiers after adjudicating Team D's platform_engineer finding — a read tier
+     * (operator) and a write tier (steward, which excludes platform_engineer
+     * from partner commercial and financial data). The `*_steward_write`
+     * policies are strictly NARROWER than what this guard was written to
+     * demand, so requiring the operator spelling specifically would fail the
+     * deployment for tightening the very privilege this migration exists to
+     * scope.
+     *
+     * The guard's actual invariant is "no policy on a platform table is
+     * reachable without a platform check", and that is what it now tests.
+     */
+    -- ALL, not ANY: flag a policy only when it matches NEITHER predicate.
+    -- `NOT LIKE ANY` would be satisfied by failing to match just one of them,
+    -- i.e. by almost every policy.
+    AND COALESCE(qual,'') || COALESCE(with_check,'')
+        NOT LIKE ALL (ARRAY['%innovion_is_platform_operator%', '%innovion_is_platform_steward%']);
 
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'Platform data reachable without a platform-operator check: %', bad;

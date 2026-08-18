@@ -19,9 +19,10 @@ import { uuid_ossp } from '@electric-sql/pglite/contrib/uuid_ossp';
 import { readFile, readdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
-import { effectiveVersion, outstandingRebases } from './integration-manifest.mjs';
+import { createHash } from 'node:crypto';
+import { effectiveVersion, outstandingRebases, VERIFIED_AGAINST } from './integration-manifest.mjs';
 
-export { outstandingRebases };
+export { outstandingRebases, VERIFIED_AGAINST };
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SHIM = join(HERE, '00_supabase_shim.sql');
@@ -35,6 +36,49 @@ export const TREES = {
     process.env.INNOVION_TEAM_D_MIGRATIONS ??
     'C:/Users/gamya/Desktop/team_d___platform_foundation/team_d___platform_foundation/supabase/migrations',
 };
+
+/**
+ * Compare the Team B and Team D trees against the revision the integration
+ * verdict was established on.
+ *
+ * Team D's foundation migration was renamed three times in ten minutes during
+ * verification, and two runs that straddled a rename reported failures which
+ * belonged to the rename rather than to any code — including a negative control
+ * that appeared to pass for entirely the wrong reason. Drift has to be visible.
+ */
+export async function verifySnapshot() {
+  const drift = [];
+  for (const team of ['B', 'D']) {
+    const expected = VERIFIED_AGAINST[team];
+    let actualFiles;
+    try {
+      actualFiles = (await readdir(TREES[team])).filter((f) => f.endsWith('.sql'));
+    } catch (err) {
+      drift.push({ team, file: '(tree)', kind: 'unreadable', detail: err.message });
+      continue;
+    }
+    for (const [file, hash] of Object.entries(expected)) {
+      if (!actualFiles.includes(file)) {
+        drift.push({ team, file, kind: 'missing', detail: 'not present in tree (renamed or removed)' });
+        continue;
+      }
+      const actual = createHash('sha256')
+        .update(await readFile(join(TREES[team], file)))
+        .digest('hex')
+        .toUpperCase()
+        .slice(0, 16);
+      if (actual !== hash) {
+        drift.push({ team, file, kind: 'changed', detail: `${hash} → ${actual}` });
+      }
+    }
+    for (const file of actualFiles) {
+      if (!(file in expected)) {
+        drift.push({ team, file, kind: 'added', detail: 'not part of the verified revision' });
+      }
+    }
+  }
+  return drift;
+}
 
 export const TEST_ENCRYPTION_KEY = 'harness-only-key-0123456789abcdef-not-a-secret';
 

@@ -102,6 +102,32 @@ BEGIN
    * by contractors_protect_authority_columns), and Team D's
    * identity_tenant_memberships / identity_user_profiles.
    */
+  /*
+   * TWO CORRECTIONS RAISED BY TEAM D'S CROSS-TEAM VERIFICATION, both adopted:
+   *
+   * (D 9.6) The scan ran over `pg_get_functiondef()`, WHICH INCLUDES COMMENTS.
+   *   Team D hit this directly: they removed the offending metadata read from
+   *   `handle_platform_new_user()`, and the migration still aborted because a
+   *   comment they had left behind still named the payload fields. A comment
+   *   must not be able to fail a deployment. Line comments are now stripped
+   *   before matching.
+   *
+   *   The converse limitation is real and is NOT claimed to be solved: a
+   *   function can still evade this scan by aliasing the accessor. This is a
+   *   smoke detector over the shared schema, not a proof. The proof is the
+   *   behavioural assertions in supabase/tests/integration-security-suite.mjs,
+   *   which forge both metadata channels and check what the functions actually
+   *   return.
+   *
+   * (D 9.5) The allowlist had gone stale against Team A's OWN code. The A/B/D
+   *   reconciliation (20260818000100) refactors `get_my_company_id()` to select
+   *   from `innovion_tenant_ids()`, so it no longer names `user_roles` and this
+   *   guard would flag it. The chain does not fail today only because this
+   *   migration runs BEFORE the reconciliation — but a re-run against the final
+   *   schema, which is exactly what a restored-copy rehearsal does, would fail.
+   *   `innovion_tenant_ids` and `innovion_auth_company_ids` are now recognised
+   *   as authoritative sources, because that is what they are.
+   */
   SELECT string_agg(p.proname, ', ')
     INTO bad_functions
   FROM pg_proc p
@@ -110,10 +136,10 @@ BEGIN
     -- prokind 'f' only: pg_get_functiondef() raises on aggregates ('a'),
     -- window functions ('w') and procedures ('p').
     AND p.prokind = 'f'
-    AND pg_get_functiondef(p.oid) ~
+    AND regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g') ~
         '(user_metadata|raw_user_meta_data|raw_app_meta_data)[^;]{0,80}(company_id|tenant_id|platform_role|''role''|>>\s*''role''|is_admin)'
-    AND pg_get_functiondef(p.oid) !~
-        '(user_roles|identity_tenant_memberships|identity_user_profiles|public\.contractors)';
+    AND regexp_replace(pg_get_functiondef(p.oid), '--[^\n]*', '', 'g') !~
+        '(user_roles|innovion_tenant_ids|innovion_auth_company_ids|identity_tenant_memberships|identity_user_profiles|public\.contractors)';
 
   IF bad_functions IS NOT NULL THEN
     RAISE EXCEPTION

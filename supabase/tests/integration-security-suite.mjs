@@ -22,7 +22,13 @@
  * Exit: 0 = all assertions passed, 1 = at least one failed.
  */
 
-import { bootIntegrated, tryAsRole, outstandingRebases } from './integration-harness.mjs';
+import {
+  bootIntegrated,
+  tryAsRole,
+  outstandingRebases,
+  verifySnapshot,
+  VERIFIED_AGAINST,
+} from './integration-harness.mjs';
 
 const CO_A = 'aaaaaaaa-0000-0000-0000-00000000000a';
 const CO_B = 'bbbbbbbb-0000-0000-0000-00000000000b';
@@ -78,15 +84,26 @@ async function main() {
     collisions.map((c) => `${c.version}: ${c.files.map((f) => f.team).join('/')}`).join(', ')
   );
   {
-    // The reconciled ordering above is achieved by the rebases declared in
-    // integration-manifest.mjs. Any rebase not yet made in the owning team's
-    // tree is reported here so a green chain is never mistaken for a deployed
-    // one — `supabase db push` would still refuse until the file is renamed.
+    // Any rebase still only DECLARED, not yet made in the owning team's tree.
+    // Now normally empty: collisions are detected from the trees rather than
+    // declared, because a declared list goes stale — this one did.
     const outstanding = outstandingRebases();
     check(
       "every declared rebase has been applied in the owning team's tree",
       outstanding.length === 0,
       outstanding.map((o) => `${o.target} → ${o.version}`).join('; ')
+    );
+  }
+  {
+    // Team D's foundation migration was renamed three times in ten minutes
+    // during this integration. Results that straddle a rename are worthless, and
+    // one such run produced a negative control that passed for the wrong reason.
+    // Everything below is only meaningful against the pinned revision.
+    const drift = await verifySnapshot();
+    check(
+      `Team B and Team D trees are at the verified revision (${VERIFIED_AGAINST.capturedAt})`,
+      drift.length === 0,
+      drift.map((d) => `[${d.team}] ${d.file}: ${d.kind} — ${d.detail}`).join(' | ')
     );
   }
 
@@ -790,6 +807,184 @@ async function main() {
         .map((r) => r.proname)
         .slice(0, 8)
         .join(', ')}`
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  group('K. PLATFORM PRIVILEGE TIERS — the platform_engineer adjudication');
+  // Team D asked whether platform_engineer is intended to hold ALL-command write
+  // over partners / partner_products / partner_revenue. Ruled: not intended.
+  // These assertions are what makes that ruling real rather than a comment.
+  const ENGINEER = 'eeeeeeee-0000-0000-0000-00000000000e';
+  const FOUNDER = 'ffffffff-0000-0000-0000-00000000000f';
+  {
+    await db.exec(`
+      INSERT INTO auth.users(id,email,email_confirmed_at) VALUES
+        ('${ENGINEER}','engineer@platform.test',now()),
+        ('${FOUNDER}','founder@platform.test', now())
+      ON CONFLICT (id) DO NOTHING;
+      UPDATE public.identity_user_profiles SET platform_role='platform_engineer' WHERE id='${ENGINEER}';
+      UPDATE public.identity_user_profiles SET platform_role='founder'           WHERE id='${FOUNDER}';
+      INSERT INTO public.partners(id,partner_code,partner_name)
+        VALUES ('11111111-2222-3333-4444-555555555555','TEST-P1','Test Partner')
+        ON CONFLICT DO NOTHING;
+      INSERT INTO public.partner_revenue(partner_id,company_id,period_start,period_end,commission_amount)
+        VALUES ('11111111-2222-3333-4444-555555555555','${CO_B}','2026-08-01','2026-08-31',4200);
+    `);
+    const AS_ENG = claims(ENGINEER);
+    const AS_FOUNDER = claims(FOUNDER);
+
+    // The tier assignments must be real, or every assertion below is vacuous.
+    const engIsAdmin = await tryAsRole(db, 'authenticated', AS_ENG, `select public.is_platform_admin() v`);
+    check(
+      'CONTROL: platform_engineer really does hold is_platform_admin()',
+      engIsAdmin.rows?.[0]?.v === true,
+      `got ${engIsAdmin.rows?.[0]?.v ?? engIsAdmin.error} — if false, the denials below prove nothing`
+    );
+    const engIsFounder = await tryAsRole(db, 'authenticated', AS_ENG, `select public.is_platform_founder() v`);
+    check(
+      'CONTROL: platform_engineer is NOT is_platform_founder()',
+      engIsFounder.rows?.[0]?.v === false,
+      `got ${engIsFounder.rows?.[0]?.v ?? engIsFounder.error}`
+    );
+
+    // READ tier — the engineer keeps what diagnosing a partner deployment needs.
+    check(
+      'platform_engineer READS public.partners',
+      (await countAs('authenticated', AS_ENG, 'partners')) >= 1
+    );
+    check(
+      'platform_engineer READS public.partner_products',
+      (await countAs('authenticated', AS_ENG, 'partner_products')) !== 'ERR'
+    );
+
+    // WRITE tier — narrowed. Commercial terms are not an engineering surface.
+    for (const t of ['partners', 'partner_products']) {
+      const r = await tryAsRole(
+        db,
+        'authenticated',
+        AS_ENG,
+        `update public.${t} set updated_at = now() returning id`
+      );
+      check(
+        `platform_engineer CANNOT write public.${t}`,
+        !!r.error || r.rows.length === 0,
+        r.error ? 'denied' : `${r.rows.length} ROWS WRITTEN`
+      );
+    }
+    {
+      const r = await tryAsRole(
+        db,
+        'authenticated',
+        AS_ENG,
+        `insert into public.partners(id,partner_code,partner_name) values (gen_random_uuid(),'ENG-X','engineer-created') returning id`
+      );
+      check(
+        'platform_engineer CANNOT insert into public.partners',
+        !!r.error,
+        r.error ? 'denied' : 'ROW CREATED'
+      );
+    }
+
+    // partner_revenue is financial: the engineer does not read it at all.
+    // Paired with its control, so a zero cannot mean "there was nothing there".
+    check(
+      'CONTROL: the founder/steward tier DOES read the partner_revenue row',
+      (await countAs('authenticated', AS_FOUNDER, 'partner_revenue')) === 1,
+      'if 0, the engineer denial below is vacuous'
+    );
+    check(
+      'platform_engineer CANNOT read public.partner_revenue',
+      (await countAs('authenticated', AS_ENG, 'partner_revenue')) === 0,
+      'financial records are steward-tier only'
+    );
+    // The pre-existing tenant read path must survive the narrowing: a company
+    // still sees its own revenue rows.
+    check(
+      'a tenant still reads its OWN partner_revenue rows',
+      (await countAs('authenticated', claims(STAFF_B), 'partner_revenue')) === 1
+    );
+
+    // The founder tier must still work, or least privilege has become no privilege.
+    check(
+      'founder holds innovion_is_platform_steward()',
+      (await tryAsRole(db, 'authenticated', AS_FOUNDER, `select public.innovion_is_platform_steward() v`))
+        .rows?.[0]?.v === true
+    );
+    {
+      const r = await tryAsRole(
+        db,
+        'authenticated',
+        AS_FOUNDER,
+        `insert into public.partners(id,partner_code,partner_name) values (gen_random_uuid(),'FDR-X','founder-created') returning id`
+      );
+      check('founder CAN write public.partners', !r.error && r.rows.length === 1, r.error ?? 'ok');
+    }
+    // And an ordinary tenant admin gets none of it.
+    check(
+      'a tenant admin reads no partner rows',
+      (await countAs('authenticated', AS_STAFF_A, 'partners')) === 0
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  group('L. A↔D TENANCY CONTRACT — the directory Team D projects from');
+  {
+    const dir = await q(`select company_id, tenant_id, display_name from public.innovion_tenant_directory order by display_name`);
+    check('tenant directory lists every Team A company', dir.length === 2, `${dir.length} rows`);
+    check(
+      'canonical tenant_id is company:<uuid>',
+      dir.every((r) => r.tenant_id === `company:${r.company_id}`),
+      dir.map((r) => r.tenant_id).join(', ')
+    );
+
+    const mem = await q(`select user_id, tenant_id, tenant_role from public.innovion_tenant_membership_directory`);
+    const roleOf = (u) => mem.find((m) => m.user_id === u)?.tenant_role ?? null;
+    check('company owner projects as tenant_owner', roleOf(STAFF_A) === 'tenant_owner', `${roleOf(STAFF_A)}`);
+    check(
+      'a viewer projects as NOTHING — Platform membership carries publish/audit authority',
+      roleOf(VIEWER_A) === null,
+      `${roleOf(VIEWER_A)}`
+    );
+    check(
+      'a Workforce contractor projects as NOTHING',
+      roleOf(WORKER_A) === null,
+      `${roleOf(WORKER_A)}`
+    );
+    check(
+      'exactly one row per (user, tenant) — the highest role wins',
+      mem.length === new Set(mem.map((m) => `${m.user_id}|${m.tenant_id}`)).size,
+      `${mem.length} rows`
+    );
+
+    // Non-forgeability: the contract must not be reachable from metadata.
+    const defs = await q(`
+      select viewname, pg_get_viewdef(('public.'||viewname)::regclass, true) d
+      from pg_views where schemaname='public'
+        and viewname in ('innovion_tenant_directory','innovion_tenant_membership_directory')`);
+    check(
+      'neither directory view reads client-writable metadata',
+      defs.every((v) => !/user_metadata|raw_user_meta_data|raw_app_meta_data/.test(v.d)),
+      defs.length ? '' : 'views missing'
+    );
+
+    // The views are security_invoker, so a tenant admin sees only their own.
+    const seenByA = await tryAsRole(
+      db,
+      'authenticated',
+      AS_STAFF_A,
+      `select count(distinct tenant_id)::int c from public.innovion_tenant_directory`
+    );
+    check(
+      'a tenant admin sees only their own tenant in the directory',
+      seenByA.rows?.[0]?.c === 1,
+      `sees ${seenByA.rows?.[0]?.c ?? seenByA.error} tenants`
+    );
+    const anonDir = await tryAsRole(db, 'anon', null, `select count(*)::int c from public.innovion_tenant_directory`);
+    check(
+      'anon reads no tenant directory rows',
+      !!anonDir.error || anonDir.rows[0].c === 0,
+      anonDir.error ? 'denied' : `${anonDir.rows[0].c} rows`
     );
   }
 

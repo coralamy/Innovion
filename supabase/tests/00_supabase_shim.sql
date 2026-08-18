@@ -47,7 +47,23 @@ CREATE OR REPLACE FUNCTION auth.email() RETURNS text LANGUAGE sql STABLE AS $$
   SELECT auth.jwt() ->> 'email';
 $$;
 GRANT USAGE ON SCHEMA auth, storage, extensions TO anon, authenticated, service_role;
-GRANT SELECT ON auth.users TO anon, authenticated, service_role;
+
+/*
+ * auth.users is NOT readable by `anon` or `authenticated` on a hosted Supabase
+ * project, and this shim previously granted it to both.
+ *
+ * Raised by Team D's cross-team verification (their item 9.7) and adopted: a
+ * grant the real platform does not make can let a Team A test pass locally and
+ * fail in production — the precise failure mode a harness exists to prevent.
+ *
+ * Nothing legitimate needs it. Every function across all three teams that reads
+ * auth.users — Team A's innovion_contractor_company_ids(), Team B's
+ * get_my_contractor_id() and auth_email_is_confirmed(), Team D's
+ * handle_platform_new_user() — is SECURITY DEFINER and therefore runs with the
+ * owner's rights. If removing this grant breaks something, that something was
+ * relying on an access level production does not give it.
+ */
+GRANT SELECT ON auth.users TO service_role;
 
 -- storage.objects stub (documents bucket migration touches it)
 CREATE TABLE IF NOT EXISTS storage.buckets (id text PRIMARY KEY, name text, public boolean DEFAULT false);
