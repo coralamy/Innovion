@@ -1,11 +1,16 @@
 # Production Deployment Runbook — A/B/D Migration Chain
 
-**Status: FOR REVIEW. Nothing here is authorised to run against production.**
+**Status: APPROVED. Founder GO given 2026-08-18. Execution in progress — see `DEPLOYMENT_LOG.md`.**
 
-**A5 CLEARED.** The full runbook - baseline, push, verification - has been executed
-end to end by the real Supabase CLI 2.115.0 against a faithful replica of the live
-baseline served over TCP. Evidence in §8. That rehearsal found two further blockers,
-both now fixed here: §3.0 (file consolidation) and the `--include-all` flag in §4.
+All pre-deployment gates are resolved: A1–A5 and A7–A8 cleared by measurement,
+**A6 waived by the Founder** on the record. §3 and §4 remain outstanding.
+
+**A5 CLEARED.** The full runbook — baseline, push, verification — was executed end
+to end by the real Supabase CLI 2.115.0 against a faithful replica of the live
+baseline served over TCP. Evidence in §8. That rehearsal found two further
+blockers, both fixed here: §3.0 (file consolidation) and `--include-all` in §4.
+Execution then found a third: §3.-1 (the direct connection is IPv6-only).
+
 Prepared 2026-08-19 · Team A, integration authority
 Target: the live Innovion Supabase project
 Chain: 56 migrations — 29 already applied, 27 to execute
@@ -110,10 +115,10 @@ SELECT
 | A3 | 2.3 returns `CASCADE` or no row | Someone changed the constraint. `20260818000700`'s behaviour is then untested against this state. |
 | A4 | 2.4 `orphan_role_grants` > 0 | Impossible while the FK exists. If non-zero, the FK is gone — see A3. |
 | A5 | ~~§8 ledger verification~~ | **CLEARED** — see §8. Retained for numbering. |
+| A6 | No verified-restorable backup taken within the last hour | See §5. **WAIVED by the Founder 2026-08-18** — grounds and scope in `DEPLOYMENT_LOG.md`. |
+| A7 | Team B or Team D tree hashes differ from `integration-manifest.mjs → VERIFIED_AGAINST` | You would be deploying migrations that were never integration-tested together. Run `npm run test:abd`. |
 | A8 | §3.0 staged directory does not contain exactly 56 files | Migrations would be silently skipped or unexpected ones applied. |
 | A9 | `db push` is run without `--include-all` | It will refuse; see §4. |
-| A6 | No verified-restorable backup taken within the last hour | See §5. |
-| A7 | Team B or Team D tree hashes differ from `integration-manifest.mjs → VERIFIED_AGAINST` | You would be deploying migrations that were never integration-tested together. Run `npm run test:abd`. |
 
 ---
 
