@@ -159,6 +159,42 @@ cd <team-a-repo> && npm run test:abd     # fails loudly on any hash drift
 
 ---
 
+## 3.-1 CONNECTION — use the SESSION POOLER, not the direct connection
+
+Found during execution on 2026-08-18. The direct-connection hostname publishes an
+**AAAA record only**:
+
+    db.<ref>.supabase.co  ->  2406:da14:25a:5800:...        (no A record)
+
+Supabase made direct-connection hostnames IPv6-only unless the IPv4 add-on is
+purchased. A deploying machine without routable IPv6 fails at DNS, before any
+authentication:
+
+    getaddrinfo ENOTFOUND db.<ref>.supabase.co
+
+This is not a credential or project fault. Verify the project is healthy
+independently - its REST host answers HTTP 401 - then use the **session pooler**:
+
+    postgresql://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres
+
+Two differences from the direct string: the host, and the username, which becomes
+`postgres.<ref>`. Take the exact value from **Dashboard -> Project Settings ->
+Database -> Connection string -> Session pooler**; the region and the `aws-0` /
+`aws-1` prefix vary by project.
+
+**Port 5432 on the pooler is SESSION mode**, which supports the transactions,
+advisory locks and DDL that migrations require. **Port 6543 is TRANSACTION mode
+and cannot run migrations** - `deploy.ps1` rejects it, and that guard is correct.
+
+Confirm reachability before starting:
+
+```powershell
+Resolve-DnsName aws-0-<region>.pooler.supabase.com -Type A
+Test-NetConnection aws-0-<region>.pooler.supabase.com -Port 5432
+```
+
+---
+
 ## 3. Baseline the ledger — 29 versions
 
 These record that a migration's objects are already present. **They execute no
