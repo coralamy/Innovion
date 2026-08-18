@@ -206,7 +206,7 @@ The `USING (true)` policies are gone.
    echoed its full command line including `--db-url`. Team A's error. The script
    now redacts it. Dashboard → Project Settings → Database → Reset database
    password.
-2. **Delete the credential file:** `Remove-Item C:Usersgamyainnovion-deploy-stage.dburl`
+2. **Delete the credential file:** `Remove-Item C:\Users\gamya\innovion-deploy-stage\.dburl`
 3. **Application smoke test.** Not performed: production has 0 role grants and 0
    jobs, so there is no principal to sign in as. The remediated policies will
    first meet a real GoTrue token when a user onboards. Watch that closely.
