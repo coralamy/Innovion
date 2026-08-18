@@ -168,41 +168,47 @@ The CLI accepts all 29 in **one** command, which is what was rehearsed. Both
 forms are equivalent; the single command is less error-prone.
 
 ```bash
-supabase --workdir "$STAGE" migration repair --status applied   20260726055014 20260726090000 20260727000001 20260727000002 20260727000003   20260727000004 20260727000005 20260727000006 20260727010000 20260727020000   20260727030000 20260727040000 20260728000000 20260728000001 20260728000002   20260728020000 20260728030000 20260731000001 20260731070000 20260806130000   20260807030000 20260807040000 20260807050000 20260807050002 20260809000001   20260809160000 20260810140000 20260810160000 20260811000000
+supabase --workdir "$STAGE" migration repair --status applied \
+  20260726055014 20260726090000 20260727000001 20260727000002 20260727000003 \
+  20260727000004 20260727000005 20260727000006 20260727010000 20260727020000 \
+  20260727030000 20260727040000 20260728000000 20260728000001 20260728000002 \
+  20260728020000 20260728030000 20260731000001 20260731070000 20260806130000 \
+  20260807030000 20260807040000 20260807050000 20260807050002 20260809000001 \
+  20260809160000 20260810140000 20260810160000 20260811000000
 ```
 
 Or individually, in this order:
 
 ```bash
-supabase migration repair --status applied 20260726055014   # [A] innovion_core
-supabase migration repair --status applied 20260726090000   # [A] innovion_extended
-supabase migration repair --status applied 20260727000001   # [B] checklist_responses
-supabase migration repair --status applied 20260727000002   # [B] issue_reports
-supabase migration repair --status applied 20260727000003   # [B] messages
-supabase migration repair --status applied 20260727000004   # [B] company_logo
-supabase migration repair --status applied 20260727000005   # [B] supply_requests_notes_contractor_docs
-supabase migration repair --status applied 20260727000006   # [B] company_id_rls_enforcement
-supabase migration repair --status applied 20260727010000   # [A] add_company_id
-supabase migration repair --status applied 20260727020000   # [A] scheduled_jobs_activity_rbac
-supabase migration repair --status applied 20260727030000   # [A] documents_storage_bucket
-supabase migration repair --status applied 20260727040000   # [A] rls_notifications_invites
-supabase migration repair --status applied 20260728000000   # [A] timesheet_invoices_stripe_templates
-supabase migration repair --status applied 20260728000001   # [B] fix_contractors_user_id
-supabase migration repair --status applied 20260728000002   # [B] rls_complete_audit
-supabase migration repair --status applied 20260728020000   # [A] i18n_localisation_partners
-supabase migration repair --status applied 20260728030000   # [A] platform_api_layer
-supabase migration repair --status applied 20260731000001   # [B] documents_bucket_and_cleanup
-supabase migration repair --status applied 20260731070000   # [A] production_hardening
-supabase migration repair --status applied 20260806130000   # [A] provider_integrations
-supabase migration repair --status applied 20260807030000   # [A] schema_push_indexes
-supabase migration repair --status applied 20260807040000   # [A] supervisor_rbac_encrypted_secrets
-supabase migration repair --status applied 20260807050000   # [A] workforce_roster_notifications
-supabase migration repair --status applied 20260807050002   # [D] platform_foundation_schema
-supabase migration repair --status applied 20260809000001   # [B] device_tokens_and_security_hardening
-supabase migration repair --status applied 20260809160000   # [A] pilot_readiness_security_sync
-supabase migration repair --status applied 20260810140000   # [A] integration_framework_phase1a
-supabase migration repair --status applied 20260810160000   # [A] integration_prereqs_phase1b
-supabase migration repair --status applied 20260811000000   # [A] xero_connector_phase1b
+supabase --workdir "$STAGE" migration repair --status applied 20260726055014   # [A] innovion_core
+supabase --workdir "$STAGE" migration repair --status applied 20260726090000   # [A] innovion_extended
+supabase --workdir "$STAGE" migration repair --status applied 20260727000001   # [B] checklist_responses
+supabase --workdir "$STAGE" migration repair --status applied 20260727000002   # [B] issue_reports
+supabase --workdir "$STAGE" migration repair --status applied 20260727000003   # [B] messages
+supabase --workdir "$STAGE" migration repair --status applied 20260727000004   # [B] company_logo
+supabase --workdir "$STAGE" migration repair --status applied 20260727000005   # [B] supply_requests_notes_contractor_docs
+supabase --workdir "$STAGE" migration repair --status applied 20260727000006   # [B] company_id_rls_enforcement
+supabase --workdir "$STAGE" migration repair --status applied 20260727010000   # [A] add_company_id
+supabase --workdir "$STAGE" migration repair --status applied 20260727020000   # [A] scheduled_jobs_activity_rbac
+supabase --workdir "$STAGE" migration repair --status applied 20260727030000   # [A] documents_storage_bucket
+supabase --workdir "$STAGE" migration repair --status applied 20260727040000   # [A] rls_notifications_invites
+supabase --workdir "$STAGE" migration repair --status applied 20260728000000   # [A] timesheet_invoices_stripe_templates
+supabase --workdir "$STAGE" migration repair --status applied 20260728000001   # [B] fix_contractors_user_id
+supabase --workdir "$STAGE" migration repair --status applied 20260728000002   # [B] rls_complete_audit
+supabase --workdir "$STAGE" migration repair --status applied 20260728020000   # [A] i18n_localisation_partners
+supabase --workdir "$STAGE" migration repair --status applied 20260728030000   # [A] platform_api_layer
+supabase --workdir "$STAGE" migration repair --status applied 20260731000001   # [B] documents_bucket_and_cleanup
+supabase --workdir "$STAGE" migration repair --status applied 20260731070000   # [A] production_hardening
+supabase --workdir "$STAGE" migration repair --status applied 20260806130000   # [A] provider_integrations
+supabase --workdir "$STAGE" migration repair --status applied 20260807030000   # [A] schema_push_indexes
+supabase --workdir "$STAGE" migration repair --status applied 20260807040000   # [A] supervisor_rbac_encrypted_secrets
+supabase --workdir "$STAGE" migration repair --status applied 20260807050000   # [A] workforce_roster_notifications
+supabase --workdir "$STAGE" migration repair --status applied 20260807050002   # [D] platform_foundation_schema
+supabase --workdir "$STAGE" migration repair --status applied 20260809000001   # [B] device_tokens_and_security_hardening
+supabase --workdir "$STAGE" migration repair --status applied 20260809160000   # [A] pilot_readiness_security_sync
+supabase --workdir "$STAGE" migration repair --status applied 20260810140000   # [A] integration_framework_phase1a
+supabase --workdir "$STAGE" migration repair --status applied 20260810160000   # [A] integration_prereqs_phase1b
+supabase --workdir "$STAGE" migration repair --status applied 20260811000000   # [A] xero_connector_phase1b
 ```
 
 ### Two entries that are not obvious
