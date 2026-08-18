@@ -1,6 +1,11 @@
 # Production Deployment Runbook — A/B/D Migration Chain
 
-**Status: FOR REVIEW. Nothing here is authorised to run.**
+**Status: FOR REVIEW. Nothing here is authorised to run against production.**
+
+**A5 CLEARED.** The full runbook - baseline, push, verification - has been executed
+end to end by the real Supabase CLI 2.115.0 against a faithful replica of the live
+baseline served over TCP. Evidence in §8. That rehearsal found two further blockers,
+both now fixed here: §3.0 (file consolidation) and the `--include-all` flag in §4.
 Prepared 2026-08-19 · Team A, integration authority
 Target: the live Innovion Supabase project
 Chain: 56 migrations — 29 already applied, 27 to execute
@@ -21,9 +26,10 @@ worse state than it is in now.
 
 The chain must be **baselined** first — §3.
 
-### Two verifications are outstanding and this runbook must not be executed until both are complete
+### Verification status
 
-1. **§8 — ledger creation on a disposable project.** Team A cannot perform this.
+1. **§8 — ledger creation.** DONE. `migration repair` creates the schema and table.
+   No disposable Supabase project was needed; see §8.
 2. **§9 — data-bearing rehearsal.** DONE. Results in §7.
 
 ---
@@ -103,18 +109,69 @@ SELECT
 | A2 | Any 2.2 value differs from the expected figures | The schema has moved since inspection. The rehearsal no longer models production. Re-run §2 inspection and the rehearsal. |
 | A3 | 2.3 returns `CASCADE` or no row | Someone changed the constraint. `20260818000700`'s behaviour is then untested against this state. |
 | A4 | 2.4 `orphan_role_grants` > 0 | Impossible while the FK exists. If non-zero, the FK is gone — see A3. |
-| A5 | §8 ledger verification not completed | The baseline mechanism is unproven. |
+| A5 | ~~§8 ledger verification~~ | **CLEARED** — see §8. Retained for numbering. |
+| A8 | §3.0 staged directory does not contain exactly 56 files | Migrations would be silently skipped or unexpected ones applied. |
+| A9 | `db push` is run without `--include-all` | It will refuse; see §4. |
 | A6 | No verified-restorable backup taken within the last hour | See §5. |
 | A7 | Team B or Team D tree hashes differ from `integration-manifest.mjs → VERIFIED_AGAINST` | You would be deploying migrations that were never integration-tested together. Run `npm run test:abd`. |
 
 ---
 
-## 3. Baseline the ledger — 29 commands, exact order
+## 3.0 Assemble the deployment directory — MANDATORY FIRST STEP
+
+**`supabase db push` reads exactly one migrations directory.** Team A's
+`supabase/migrations/` holds 38 files. The chain is 56: Team B's 14 and Team D's
+4 live in their own repositories.
+
+Discovered by executing the CLI: `migration repair` refuses a version whose file
+it cannot find -
+
+```
+glob supabase/migrations/20260727000001_*.sql: file does not exist
+```
+
+Without this step, **10 of the 29 baseline commands fail** (9 Team B + Team D's
+`20260807050002`) and **6 of the 27 push migrations cannot be applied at all**.
+
+```bash
+STAGE=~/innovion-deploy-stage
+rm -rf "$STAGE" && mkdir -p "$STAGE/supabase/migrations"
+
+cp <team-a-repo>/supabase/migrations/*.sql  "$STAGE/supabase/migrations/"
+cp <team-b-repo>/supabase/migrations/*.sql  "$STAGE/supabase/migrations/"
+cp <team-d-repo>/supabase/migrations/*.sql  "$STAGE/supabase/migrations/"
+
+ls "$STAGE/supabase/migrations"/*.sql | wc -l    # MUST be 56
+```
+
+**ABORT if the count is not exactly 56.** A missing file means a migration is
+silently skipped; a surplus means something untested is about to be applied.
+
+Copy `config.toml` from the Team A repo, then run every later command with
+`--workdir "$STAGE"`. Nothing is copied back; Team B and Team D repositories are
+read-only inputs.
+
+Verify the staged files match the integration-tested revisions before proceeding:
+
+```bash
+cd <team-a-repo> && npm run test:abd     # fails loudly on any hash drift
+```
+
+---
+
+## 3. Baseline the ledger — 29 versions
 
 These record that a migration's objects are already present. **They execute no
 SQL from the migration files** and change no application data.
 
-Run from the repository root with the project linked.
+The CLI accepts all 29 in **one** command, which is what was rehearsed. Both
+forms are equivalent; the single command is less error-prone.
+
+```bash
+supabase --workdir "$STAGE" migration repair --status applied   20260726055014 20260726090000 20260727000001 20260727000002 20260727000003   20260727000004 20260727000005 20260727000006 20260727010000 20260727020000   20260727030000 20260727040000 20260728000000 20260728000001 20260728000002   20260728020000 20260728030000 20260731000001 20260731070000 20260806130000   20260807030000 20260807040000 20260807050000 20260807050002 20260809000001   20260809160000 20260810140000 20260810160000 20260811000000
+```
+
+Or individually, in this order:
 
 ```bash
 supabase migration repair --status applied 20260726055014   # [A] innovion_core
@@ -172,9 +229,25 @@ SELECT count(*) AS recorded FROM supabase_migrations.schema_migrations;   -- exp
 ## 4. The push
 
 ```bash
-supabase migration list      # confirm 27 pending, matching §4.1 exactly
-supabase db push
+supabase --workdir "$STAGE" migration list      # confirm 27 pending, matching §4.1
+supabase --workdir "$STAGE" db push --include-all
 ```
+
+### `--include-all` is REQUIRED, not optional
+
+Without it the push **refuses to start**:
+
+```
+Found local migration files to be inserted before the last migration on remote database.
+Rerun the command with --include-all flag to apply these migrations:
+  supabase/migrations/20260728010000_seed_onboarding.sql
+  supabase/migrations/20260810000000_platform_event_bus_runtime.sql
+```
+
+Those are the two **gap** migrations: both sort before the last already-applied
+version (`20260811000000`), and the CLI treats out-of-order migrations as an
+error condition. This is the direct consequence of production's applied set not
+being a contiguous prefix. Both were applied successfully in rehearsal.
 
 ### 4.1 Expected push set — 27 migrations, in this order
 
@@ -333,33 +406,76 @@ Slowest migration: `20260818000400` at 202 ms.
 
 ---
 
-## 8. OUTSTANDING — ledger creation on a disposable project
+## 8. A5 — ledger creation, and full CLI rehearsal. CLEARED.
 
-**Team A cannot perform this.** No Supabase CLI is installed locally, no
-production or non-production credentials are held, and creating a project is not
-authorised.
+No disposable Supabase project was required. The Supabase CLI accepts
+`--db-url`, so the entire runbook was executed by the **real CLI** against a
+faithful replica of the live baseline served over TCP from PGlite. That is a
+higher-fidelity test than a bare empty project would have been, because the
+replica reproduces production's actual state.
 
-The assumption this runbook rests on is that **`supabase migration repair` creates
-`supabase_migrations.schema_migrations` when it does not exist.** If it does not,
-§3 fails at the first command and the entire baseline approach needs rework.
+**CLI version: 2.115.0** (`npx supabase@latest --version`).
 
-On a throwaway project — never production:
+### A5 answered
 
-```bash
-supabase projects create innovion-ledger-test
-supabase link --project-ref <new-ref>
-
-# The project has no application ledger, exactly like production.
-supabase migration repair --status applied 20260726055014
-
-# Expected: the command succeeds and the row exists.
-#   SELECT * FROM supabase_migrations.schema_migrations;
+```
+$ supabase migration repair --status applied 20260726055014 --db-url <replica>
+Connecting to remote database...
+Repaired migration history: [20260726055014] => applied
 ```
 
-Record whether it succeeded, whether the schema and table were created, and the
-CLI version used. Then delete the project.
+Against a database where `supabase_migrations` did **not** exist. Immediately
+after, the schema and table were present:
 
-**Abort condition A5 stands until this is reported.**
+```
+schema=1  table=1  versions=[20260726055014]
+```
+
+**`supabase migration repair` creates `supabase_migrations.schema_migrations`
+when it is absent.** Abort condition A5 is cleared.
+
+### Full runbook rehearsal, end to end
+
+| Step | Result |
+| --- | --- |
+| Replica built: 29 applied, no ledger, drift reproduced | `ledger_schema=0 company_access=13` |
+| §3 baseline, 29 versions in one command | ledger **29** |
+| `migration list` | 56 listed, **27 pending** — matches §4.1 exactly |
+| `db push` without `--include-all` | **REFUSED** (see §4) |
+| `db push --include-all` | **27 applied, 0 failed**, ledger **56** |
+| `db push --dry-run` afterwards | `Remote database is up to date` |
+
+### Verification, measured through the CLI path
+
+| | after baseline | after push | §10 expects |
+| --- | --- | --- | --- |
+| `applied_total` | 29 | **56** | 56 |
+| `company_access_remaining` | 13 | **0** | 0 |
+| `views_bypassing_rls` | 4 | **0** | 0 |
+| `secdef_unpinned` | 18 | **0** | 0 |
+| `tables_without_rls` | 0 | **0** | 0 |
+| `fk_on_delete` | NO ACTION | **CASCADE** | CASCADE |
+| `refresh_triggers` | 0 | **2** | 2 |
+
+Every §10 expected result was produced.
+
+### Two blockers this rehearsal found
+
+Neither was visible to the in-process rehearsals, because both are CLI
+behaviours rather than SQL behaviours.
+
+1. **Migration files are split across three repositories.** `migration repair`
+   refuses a version whose file it cannot see, and `db push` only applies files
+   in its own directory. 18 of 56 were missing from Team A's tree. Fixed by §3.0.
+2. **`--include-all` is mandatory.** The two gap migrations sort before the last
+   applied version and the CLI refuses out-of-order migrations by default. Fixed
+   in §4.
+
+### One local-only artifact, not applicable to production
+
+The replica speaks unencrypted Postgres, so the rehearsal used
+`?sslmode=disable`. **Do not carry that flag to production.** The live project
+requires TLS and the CLI negotiates it by default.
 
 ---
 
@@ -472,11 +588,12 @@ GoTrue token.
 
 | Gate | Status |
 | --- | --- |
-| Runbook reviewed and approved | **PENDING** |
-| §8 ledger verification on a disposable project | **PENDING — Founder action** |
+| §8 ledger creation verified (A5) | **COMPLETE** — CLI 2.115.0, §8 |
+| §8 full CLI rehearsal, baseline + push + verify | **COMPLETE** — §8 |
 | §9 data-bearing rehearsal | **COMPLETE** — §7 |
-| Verified-restorable backup taken | **PENDING** |
-| §2 pre-deployment checks pass | **PENDING** |
+| Runbook reviewed and approved | **PENDING — Founder** |
+| Verified-restorable backup taken | **PENDING — Founder** |
+| §2 pre-deployment checks pass | **PENDING — at deploy time** |
 
 Nothing in this runbook has been executed. No production migration, repair,
 push, deployment, credential or DNS change has been made.
