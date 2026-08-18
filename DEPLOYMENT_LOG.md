@@ -200,6 +200,72 @@ The `USING (true)` policies are gone.
 
 ---
 
+## Post-deployment verification, run after the credential was rotated
+
+Production is unreachable from here by design — the password was rotated and
+`.dburl` deleted. Everything below is local, against a faithful replica.
+
+### As-deployed / clean-chain equivalence — the bridge
+
+Every other suite builds the schema from empty in version order. Production was
+not built that way. A new suite (`npm run test:asdeployed`) builds both and diffs
+them: 35 hand-applied migrations, the drift, the partial application, the repair
+and the remaining 22 on one side; the clean 58-migration chain on the other.
+
+| | |
+| --- | --- |
+| tables · columns · policies · functions | 78 · 1184 · 256 · 122 — **identical** |
+| triggers · indexes · enum values | 77 · 327 · 236 — **identical** |
+| policy predicates compared byte-for-byte | 256 — **identical** |
+| tables with RLS disabled | 0 on both |
+
+**This is what makes the other suites meaningful for production.** The integration
+suite's 141 adversarial assertions run against the clean chain; equivalence is
+what transfers them to the deployed schema. Without it they describe a database
+nobody is running.
+
+### A third artefact of the same partial application
+
+The first equivalence run failed on one item: `idx_issue_reports_company_created`
+exists in the clean chain and **not in production**.
+
+Team B's `20260727000006` landed partially, so three things were missing, not two:
+
+1. `issue_reports.company_id` — repaired by `20260816130000`
+2. `issue_reports_company_isolation` — repaired by `20260816130000`
+3. `idx_issue_reports_company_created` — **found only now**
+
+The gap scan run before the repair compared tables, columns, functions and enum
+values but **not indexes**, so it did not surface. That was a hole in my method,
+and the equivalence suite now covers indexes and triggers permanently.
+
+The index belongs to Team B's `20260731000001`, which creates it only when the
+column exists — a correct guard, and exactly what `20260817000003` lacked. It
+degraded gracefully rather than aborting. But that migration is recorded as
+applied and will never re-run, so the index would stay absent forever.
+
+**`20260819000000_issue_reports_company_created_index`** restores it. Impact is
+performance only — tenant-scoped report listing falls back to a sequential scan —
+and no security property depends on it. Immaterial at four rows; it matters as
+reports accumulate.
+
+**This migration is NOT yet applied to production.** It is prepared, tested and
+committed, awaiting the next deployment window and a credential.
+
+### Battery, after the deployment
+
+| Suite | Result |
+| --- | --- |
+| type-check · lint · build | exit 0 · 0 errors · compiles |
+| security · schema · app · controls | 121 · 261 cols · 72 · 307 buttons — all pass |
+| workforce · integration | 123 · 141 — all pass |
+| replay · post-failure rehearsal · as-deployed | 47 · 23 · 11 — all pass |
+
+Chain: **58 migrations** (A 40, B 14, D 4), 0 version collisions, no Team B/D
+drift. Schema suites identical across three consecutive runs.
+
+---
+
 ## Outstanding
 
 1. **Rotate the database password.** It was exposed in this session: `deploy.ps1`
