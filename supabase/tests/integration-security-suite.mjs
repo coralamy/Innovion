@@ -1126,11 +1126,9 @@ async function main() {
     const armed = async () =>
       (await q(`select count(*)::int c from pg_trigger
                  where tgname like 'innovion_tenancy_projection%'`))[0].c;
-    check(
-      'against the current Team D tree the refresh trigger is NOT armed',
-      (await armed()) === 0,
-      'correct: arming it would abort every tenant-admin role change'
-    );
+    // Superseded: this once asserted the trigger was NOT armed, which was
+    // correct while Team D's guards refused trigger-origin calls. Both changes
+    // have shipped, so the armed state is asserted positively below instead.
     check(
       'CONTROL: the projection really does refuse a tenant-admin JWT',
       Boolean(
@@ -1140,60 +1138,89 @@ async function main() {
       'if it did not refuse, the trigger would already be safe to arm'
     );
 
-    // ── Team D change 1 has SHIPPED; change 2 has not ───────────────────────
+    // ── Both Team D changes have now SHIPPED ────────────────────────────────
     const projSrc = (await q(
       `select pg_get_functiondef(to_regprocedure('public.platform_project_innovion_tenancy()')) d`))[0].d;
+    const guardSrc = (await q(
+      `select pg_get_functiondef(to_regprocedure('public.identity_membership_guard()')) d`))[0].d;
     check(
-      'Team D change 1 (pg_trigger_depth conjunct) is present in their tree',
+      'Team D change 1 (pg_trigger_depth conjunct) is present',
       /pg_trigger_depth\(\)\s*=\s*0/.test(projSrc),
-      'shipped in 20260818000400'
+      '20260818000400'
     );
     check(
-      'Team D change 2 (identity_membership_guard carve-out) is NOT yet present',
-      !/company_id/.test(
-        (await q(`select pg_get_functiondef(to_regprocedure('public.identity_membership_guard()')) d`))[0].d
-      ),
-      'still gates Innovion memberships on is_platform_admin()'
+      'Team D change 2 (identity_membership_guard carve-out) is present',
+      /tenant_company IS NULL AND NOT public\.is_platform_admin\(\)/.test(guardSrc),
+      'CREATE OR REPLACE in 20260818000400, overriding 20260817000500'
     );
-
-    // Apply change 2 exactly as specified, preserving Team D's own stamping of
-    // granted_by and updated_at — dropping those would make this simulation
-    // prove something Team D would not actually ship.
-    await db.exec(`
-      CREATE OR REPLACE FUNCTION public.identity_membership_guard()
-      RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $g$
-      DECLARE tenant_company UUID;
-      BEGIN
-        IF auth.uid() IS NULL THEN RETURN NEW; END IF;
-
-        -- Innovion projected tenants: authority is Team A's membership directory,
-        -- already enforced by identity_membership_projection_guard(). A Team D
-        -- platform administrator does not approve Innovion memberships.
-        SELECT t.company_id INTO tenant_company
-          FROM public.platform_tenants t WHERE t.tenant_id = NEW.tenant_id;
-
-        IF tenant_company IS NULL AND NOT public.is_platform_admin() THEN
-          RAISE EXCEPTION 'permission denied: tenant membership is granted by a platform administrator';
-        END IF;
-
-        IF TG_OP = 'INSERT' THEN NEW.granted_by := auth.uid(); END IF;
-        NEW.updated_at := now();
-        RETURN NEW;
-      END $g$;`);
-
-    const { readFile: rf } = await import('node:fs/promises');
-    await db.exec(await rf('./supabase/migrations/20260818000600_tenancy_projection_refresh.sql', 'utf8'));
-
     check(
-      'with both Team D changes, Team A 20260818000600 ARMS ITSELF on re-run',
+      'the refresh trigger is ARMED straight out of the chain, with no patching',
       (await armed()) === 2,
-      `${await armed()} trigger(s) — no manual step, no coordination`
+      `${await armed()} trigger(s)`
     );
     check(
       'and the triggers are STATEMENT-level, not per row',
       (await q(`select count(*)::int c from pg_trigger
                  where tgname like 'innovion_tenancy_projection%' and (tgtype & 1) <> 0`))[0].c === 0
     );
+
+    // ── ADVERSARIAL: the carve-out must not have opened a direct write path ──
+    // Team D's carve-out lets a non-platform principal reach the membership
+    // table when the tenant is an Innovion one. Their claim is that
+    // identity_membership_projection_guard() and RLS still confine it. Verified
+    // here rather than accepted, because this is the one place the change could
+    // have widened authority.
+    {
+      const FORGER = '11111111-0000-0000-0000-0000000000f0';
+      await db.exec('RESET ROLE');
+      await db.query(`select set_config('request.jwt.claims','',false)`);
+      await db.exec(`INSERT INTO auth.users(id,email,email_confirmed_at)
+                       VALUES ('${FORGER}','forger@x.test',now());`);
+      const tid = `company:${CO_A}`;
+
+      // 1. A membership Team A's directory does NOT contain.
+      const forged = await tryAsRole(db, 'authenticated', claims(FORGER),
+        `insert into public.identity_tenant_memberships(user_id,tenant_id,tenant_role)
+         values ('${FORGER}','${tid}','tenant_owner') returning id`);
+      check(
+        'a principal CANNOT grant themselves an Innovion membership Team A has not granted',
+        Boolean(forged.error),
+        forged.error ? 'denied' : 'MEMBERSHIP CREATED — the carve-out opened a write path'
+      );
+
+      // 2. Even a membership the directory DOES contain must not be writable
+      //    directly by a client; only the SECURITY DEFINER projection writes.
+      const selfGrant = await tryAsRole(db, 'authenticated', claims(STAFF_A),
+        `insert into public.identity_tenant_memberships(user_id,tenant_id,tenant_role)
+         values ('${STAFF_A}','${tid}','tenant_owner') returning id`);
+      check(
+        '...nor one it does contain — direct client writes stay closed either way',
+        Boolean(selfGrant.error),
+        selfGrant.error ? 'denied' : 'ROW CREATED by a client'
+      );
+
+      // 3. Escalating an existing projected membership must also be refused.
+      const escalate = await tryAsRole(db, 'authenticated', claims(STAFF_A),
+        `update public.identity_tenant_memberships set tenant_role='tenant_owner'
+          where tenant_id='${tid}' returning id`);
+      check(
+        '...and an existing projected membership cannot be escalated by a client',
+        Boolean(escalate.error) || escalate.rows.length === 0,
+        escalate.error ? 'denied' : `${escalate.rows.length} ROWS ESCALATED`
+      );
+
+      // 4. Team D operations tenants must still require a platform admin — the
+      //    carve-out is scoped to company_id IS NOT NULL and must not leak.
+      const opsTenant = await tryAsRole(db, 'authenticated', claims(FORGER),
+        `insert into public.identity_tenant_memberships(user_id,tenant_id,tenant_role)
+         values ('${FORGER}','tenant-coralamy-root','tenant_owner') returning id`);
+      check(
+        'CONTROL: Team D operations tenants still require platform-administrative authority',
+        Boolean(opsTenant.error),
+        opsTenant.error ? 'denied' : 'MEMBERSHIP OF THE ROOT OPS TENANT CREATED'
+      );
+    }
+
 
     // ── Grant propagates, via the REAL client write path ────────────────────
     // Team A has no admin-adds-another-user path: user_roles_select_own means an

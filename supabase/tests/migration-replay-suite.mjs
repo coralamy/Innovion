@@ -395,6 +395,51 @@ async function main() {
     await d6.close();
   }
 
+  // 5b-quater. DISARM ON REGRESSION.
+  //     Team D's membership carve-out ships as a CREATE OR REPLACE in their
+  //     20260818000400, overriding the stricter definition in their
+  //     20260817000500. Re-running 20260817000500 alone therefore reverts it.
+  //     If Team A's refresh triggers stayed armed against a reverted guard,
+  //     every companies and user_roles write would fail. The migration must take
+  //     back what it armed, not merely decline to arm again.
+  {
+    const { db: d9 } = await bootIntegrated({ quiet: true });
+    const armed = async () =>
+      (await d9.query(`select count(*)::int c from pg_trigger
+                        where tgname like 'innovion_tenancy_projection%'`)).rows[0].c;
+    const carved = async () =>
+      /tenant_company IS NULL AND NOT public.is_platform_admin()/.test(
+        (await d9.query(
+          `select pg_get_functiondef(to_regprocedure('public.identity_membership_guard()')) d`
+        )).rows[0].d);
+
+    check('CONTROL: the full chain arms the refresh triggers', (await armed()) === 2, `${await armed()}`);
+    check('CONTROL: and the Team D carve-out is in place', await carved());
+
+    await d9.exec(await readFile(join(TREES.D, '20260817000500_platform_authority_hardening.sql'), 'utf8'));
+    check('re-running Team D 20260817000500 alone reverts the carve-out', !(await carved()),
+      'this is the regression the disarm exists for');
+
+    let err = null;
+    try {
+      await d9.exec(await readFile(join(TREES.A, '20260818000600_tenancy_projection_refresh.sql'), 'utf8'));
+    } catch (e) { err = e.message; }
+    check('Team A 20260818000600 re-runs without aborting the deployment', err === null, clip(err));
+    check('...and DISARMS the triggers rather than leaving them against a refusing guard',
+      (await armed()) === 0,
+      `${await armed()} trigger(s) still armed — companies and user_roles writes would fail`);
+
+    // And the system must still work: writes succeed, just unprojected.
+    let writeErr = null;
+    try {
+      await d9.exec(`INSERT INTO auth.users(id,email) VALUES ('00000000-0000-0000-0000-00000000ab01','disarm@x.test');
+                     INSERT INTO public.companies(id,name,owner_id)
+                       VALUES ('00000000-0000-0000-0000-00000000ab02','Post-disarm tenant','00000000-0000-0000-0000-00000000ab01');`);
+    } catch (e) { writeErr = e.message; }
+    check('...so tenant creation still succeeds after the regression', writeErr === null, clip(writeErr));
+    await d9.close();
+  }
+
   // 5b-ter. REFERENTIAL INTEGRITY (Team D P2).
   //     user_roles is the authority table. Before 20260818000700 a role grant
   //     could name a company that does not exist AND be published through the

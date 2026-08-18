@@ -238,6 +238,22 @@ BEGIN
   PERFORM set_config('request.jwt.claims', '', true);
 
   IF NOT probe_ok THEN
+    -- DISARM. Not just "do not arm".
+    --
+    -- A previous run may have armed these triggers while Team D accepted
+    -- trigger-origin calls. If Team D's carve-out is later reverted — which
+    -- happens simply by re-running their 20260817000500, since the carve-out
+    -- ships as a CREATE OR REPLACE in their later 20260818000400 — then leaving
+    -- the triggers in place produces the worst available state: armed triggers
+    -- calling a projection that now refuses, so every INSERT INTO
+    -- public.companies and every user_roles write fails.
+    --
+    -- Measured: after re-running 20260817000500 alone against the full chain,
+    -- the carve-out is gone but the triggers were still present. Refusing to arm
+    -- was not enough; the migration has to take back what it armed.
+    DROP TRIGGER IF EXISTS innovion_tenancy_projection_roles     ON public.user_roles;
+    DROP TRIGGER IF EXISTS innovion_tenancy_projection_companies ON public.companies;
+
     RAISE WARNING
       'Tenancy projection refresh NOT installed: Team D''s platform_project_innovion_tenancy() rejects trigger-origin calls (%). The projection remains manual and therefore stale between runs. Team D must add "AND pg_trigger_depth() = 0" to its authorisation check; this migration arms itself on the next run once that lands.',
       COALESCE(probe_err, 'unknown');
