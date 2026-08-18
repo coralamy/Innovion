@@ -224,6 +224,9 @@ async function main() {
     '20260817008000_secdef_search_path_hardening.sql',
     '20260818000100_abd_authority_reconciliation.sql',
     '20260818000300_workforce_carveout_assertions.sql',
+    '20260818000500_tenant_directory_scope.sql',
+    '20260818000600_tenancy_projection_refresh.sql',
+    '20260818000700_user_roles_company_fk.sql',
   ];
   for (const file of GUARD_MIGRATIONS) {
     const err = await reapplyOnFreshFinalSchema(join(TREES.A, file));
@@ -390,6 +393,56 @@ async function main() {
       healed ? `it aborted: ${clip(healed)}` : 'recreated and passed, as documented'
     );
     await d6.close();
+  }
+
+  // 5b-ter. REFERENTIAL INTEGRITY (Team D P2).
+  //     user_roles is the authority table. Before 20260818000700 a role grant
+  //     could name a company that does not exist AND be published through the
+  //     A-to-D membership directory as a tenant administrator of it.
+  {
+    const fk = join(TREES.A, '20260818000700_user_roles_company_fk.sql');
+    const fkSql = await readFile(fk, 'utf8');
+
+    // The constraint must actually reject the row it was added to reject.
+    const { db: d7 } = await bootIntegrated({ quiet: true });
+    await d7.exec(`INSERT INTO auth.users(id,email) VALUES
+      ('99999999-0000-0000-0000-00000000000f','orphan@x.test');`);
+    let orphanErr = null;
+    try {
+      await d7.exec(`INSERT INTO public.user_roles(user_id,company_id,role) VALUES
+        ('99999999-0000-0000-0000-00000000000f','deadbeef-0000-0000-0000-00000000dead','admin');`);
+    } catch (e) { orphanErr = e.message; }
+    check(
+      'a role grant naming a non-existent company is now REJECTED',
+      Boolean(orphanErr && /foreign key/i.test(orphanErr)),
+      orphanErr ? clip(orphanErr, 90) : 'IT WAS ACCEPTED — the FK is not enforcing'
+    );
+
+    // Deleting a company must take its grants with it, not strand them.
+    await d7.exec(`
+      INSERT INTO auth.users(id,email) VALUES ('99999999-0000-0000-0000-00000000000e','u@x.test');
+      INSERT INTO public.companies(id,name) VALUES ('eeeeeeee-0000-0000-0000-00000000000e','Doomed');
+      INSERT INTO public.user_roles(user_id,company_id,role) VALUES
+        ('99999999-0000-0000-0000-00000000000e','eeeeeeee-0000-0000-0000-00000000000e','admin');
+      DELETE FROM public.companies WHERE id='eeeeeeee-0000-0000-0000-00000000000e';`);
+    check(
+      'deleting a company cascades away its role grants',
+      (await d7.query(`select count(*)::int c from public.user_roles
+        where company_id='eeeeeeee-0000-0000-0000-00000000000e'`)).rows[0].c === 0
+    );
+    await d7.close();
+
+    // And the guard must fire if the constraint is ever dropped.
+    const { db: d8 } = await bootIntegrated({ quiet: true });
+    await d8.exec(`ALTER TABLE public.user_roles DROP CONSTRAINT user_roles_company_id_fkey;`);
+    let guardErr = null;
+    try { await d8.exec(fkSql); } catch (e) { guardErr = e.message; }
+    check(
+      '20260818000700 re-adds the constraint if it has been dropped',
+      guardErr === null,
+      guardErr ? clip(guardErr) : 're-added'
+    );
+    await d8.close();
   }
 
   // 5c. PIECEMEAL APPLICATION MUST FAIL.

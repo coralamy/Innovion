@@ -85,3 +85,42 @@ ALTER TABLE storage.buckets
   ADD COLUMN IF NOT EXISTS owner uuid,
   ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now(),
   ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+/*
+ * ── HARNESS FIDELITY ASSERTIONS ────────────────────────────────────────────
+ *
+ * Team D's P3 reported that this shim grants SELECT on auth.users to anon and
+ * authenticated. It no longer does — that was narrowed to service_role in an
+ * earlier turn, adopting their own item 9.7 — so the report was against a stale
+ * copy. But a correctly-written line is not a control. The substance of their
+ * finding is that a harness privilege real Supabase does not give lets a test
+ * pass here and fail in production, and nothing was stopping that from being
+ * reintroduced.
+ *
+ * The property is therefore asserted, at the end of the shim, where it sees the
+ * final grant state rather than an intermediate one. Any future edit that
+ * re-widens the grant fails every suite on the next run instead of quietly
+ * restoring the fiction.
+ *
+ * Scope note: this asserts the specific privilege Team D identified. It is not
+ * a general proof that the shim matches hosted Supabase — nothing local can be.
+ * The shim's remaining departures are deliberate and narrow (storage.objects is
+ * a stub, GoTrue is absent), and are recorded as an external-verification limit
+ * in the integration report rather than papered over here.
+ */
+DO $fidelity$
+DECLARE leaked text;
+BEGIN
+  SELECT string_agg(DISTINCT grantee, ', ') INTO leaked
+  FROM information_schema.role_table_grants
+  WHERE table_schema = 'auth'
+    AND table_name   = 'users'
+    AND grantee IN ('anon', 'authenticated', 'PUBLIC');
+
+  IF leaked IS NOT NULL THEN
+    RAISE EXCEPTION
+      'Harness fidelity: auth.users is granted to %, which hosted Supabase does not do. A test relying on that would pass locally and fail in production.',
+      leaked;
+  END IF;
+END
+$fidelity$;

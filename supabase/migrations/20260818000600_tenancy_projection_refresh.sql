@@ -152,19 +152,38 @@ REVOKE ALL ON FUNCTION public.innovion_refresh_tenancy_projection() FROM PUBLIC,
 -- ── Arm it, but only if Team D will actually accept a trigger-origin call ──
 DO $$
 DECLARE
-  probe_ok  boolean := false;
-  probe_err text;
+  probe_ok      boolean := false;
+  probe_err     text;
+  probe_uid     uuid := '00000000-0000-0000-0000-0000000d0d0d';
+  probe_company uuid := '00000000-0000-0000-0000-0000000c0c0c';
 BEGIN
   IF to_regprocedure('public.platform_project_innovion_tenancy()') IS NULL THEN
     RAISE NOTICE 'Team D not present; tenancy projection refresh not installed.';
     RETURN;
   END IF;
 
-  -- Behavioural capability probe. Build a throwaway table and trigger that call
-  -- the projection exactly as the real trigger will, with a non-platform JWT
-  -- set, then roll the whole thing back. Checking the function's source text
-  -- for 'pg_trigger_depth' would test its spelling, not its behaviour.
+  -- Behavioural capability probe.
+  --
+  -- IT MUST EXERCISE THE WHOLE PATH, INCLUDING A MEMBERSHIP WRITE. The first
+  -- version of this probe only called the projection against an empty database,
+  -- so there was nothing to project and it never reached the guard on
+  -- identity_tenant_memberships. When Team D shipped the pg_trigger_depth()
+  -- conjunct but not the identity_membership_guard() change, that shallow probe
+  -- passed, armed the triggers, and every INSERT INTO public.companies then
+  -- failed with "permission denied: tenant membership is granted by a platform
+  -- administrator". A capability probe that stops short of the write it is
+  -- authorising is worse than none, because it arms on a false positive.
+  --
+  -- So the probe now builds a real tenant with a real member, projects it as a
+  -- non-platform principal, and rolls the whole thing back.
   BEGIN
+    -- Start from no session identity. A migration may legitimately be run in a
+    -- session that already carries JWT claims, and Team A's own
+    -- set_company_id_from_user() refuses a companies INSERT when the session
+    -- belongs to a different tenant — which would fail the probe for a reason
+    -- that has nothing to do with Team D.
+    PERFORM set_config('request.jwt.claims', '', true);
+
     CREATE TEMP TABLE _innovion_probe(i int) ON COMMIT DROP;
 
     CREATE OR REPLACE FUNCTION pg_temp._innovion_probe_fn()
@@ -179,15 +198,34 @@ BEGIN
       AFTER INSERT ON _innovion_probe
       FOR EACH STATEMENT EXECUTE FUNCTION pg_temp._innovion_probe_fn();
 
-    -- A principal who is emphatically NOT a platform administrator: no such
-    -- user exists, so is_platform_admin() is false by every model.
+    -- A synthetic tenant with a synthetic owner. The owner is projectable, so
+    -- the projection must actually INSERT an identity_tenant_memberships row —
+    -- which is where the second Team D guard lives.
+    INSERT INTO auth.users (id, email)
+    VALUES (probe_uid, 'abd-refresh-probe@innovion.invalid');
+
+    INSERT INTO public.companies (id, name, owner_id)
+    VALUES (probe_company, 'ABD refresh probe tenant', probe_uid);
+
+    -- A principal who is emphatically NOT a platform administrator: the probe
+    -- user's own identity profile is created by Team D at role 'end_user'.
     PERFORM set_config('request.jwt.claims',
-      json_build_object('sub', '00000000-0000-0000-0000-0000000d0d0d',
-                        'role', 'authenticated')::text, true);
+      json_build_object('sub', probe_uid::text, 'role', 'authenticated')::text, true);
 
     INSERT INTO _innovion_probe VALUES (1);
 
-    probe_ok := true;
+    -- Prove the membership actually landed. A projection that silently wrote
+    -- nothing would otherwise read as success.
+    IF NOT EXISTS (
+      SELECT 1 FROM public.identity_tenant_memberships m
+       WHERE m.user_id = probe_uid
+    ) THEN
+      probe_ok  := false;
+      probe_err := 'projection ran but wrote no membership for the probe tenant';
+    ELSE
+      probe_ok := true;
+    END IF;
+
     RAISE EXCEPTION USING ERRCODE = 'raise_exception',
                           MESSAGE = 'INNOVION_PROBE_ROLLBACK';
   EXCEPTION WHEN OTHERS THEN

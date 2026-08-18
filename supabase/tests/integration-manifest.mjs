@@ -144,7 +144,7 @@ export const VERIFIED_AGAINST = {
   //         content unchanged: the hash below is byte-identical to the one
   //         recorded when the file was named …045000 and again when it was
   //         named …050000, which confirms the re-stamp was a rename only.
-  capturedAt: '2026-08-18T13:05:00+10:00',
+  capturedAt: '2026-08-18T13:40:00+10:00',
   B: {
     '20260727000001_checklist_responses.sql': '05CED7378D37F56B',
     '20260727000002_issue_reports.sql': '6A29B043A4F83398',
@@ -165,7 +165,7 @@ export const VERIFIED_AGAINST = {
     '20260807050002_platform_foundation_schema.sql': 'B1FC64E43A34F8C5',
     '20260810000000_platform_event_bus_runtime.sql': '1739ACD4E8D5C33E',
     '20260817000500_platform_authority_hardening.sql': 'C616FC6AB718271E',
-    '20260818000400_innovion_tenancy_projection.sql': '8A682ACF02052E50',
+    '20260818000400_innovion_tenancy_projection.sql': '4014FA00A6700F68',
   },
 };
 

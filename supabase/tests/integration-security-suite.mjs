@@ -1140,28 +1140,44 @@ async function main() {
       'if it did not refuse, the trigger would already be safe to arm'
     );
 
-    // ── Apply the two changes required of Team D, then re-run Team A's file ──
+    // ── Team D change 1 has SHIPPED; change 2 has not ───────────────────────
     const projSrc = (await q(
       `select pg_get_functiondef(to_regprocedure('public.platform_project_innovion_tenancy()')) d`))[0].d;
-    const projPatched = projSrc.replace(
-      'IF auth.uid() IS NOT NULL AND NOT public.is_platform_admin() THEN',
-      'IF auth.uid() IS NOT NULL AND pg_trigger_depth() = 0 AND NOT public.is_platform_admin() THEN'
+    check(
+      'Team D change 1 (pg_trigger_depth conjunct) is present in their tree',
+      /pg_trigger_depth\(\)\s*=\s*0/.test(projSrc),
+      'shipped in 20260818000400'
     );
-    check('Team D change 1 is a single added conjunct', projPatched !== projSrc);
-    await db.exec(projPatched);
+    check(
+      'Team D change 2 (identity_membership_guard carve-out) is NOT yet present',
+      !/company_id/.test(
+        (await q(`select pg_get_functiondef(to_regprocedure('public.identity_membership_guard()')) d`))[0].d
+      ),
+      'still gates Innovion memberships on is_platform_admin()'
+    );
 
+    // Apply change 2 exactly as specified, preserving Team D's own stamping of
+    // granted_by and updated_at — dropping those would make this simulation
+    // prove something Team D would not actually ship.
     await db.exec(`
       CREATE OR REPLACE FUNCTION public.identity_membership_guard()
       RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $g$
       DECLARE tenant_company UUID;
       BEGIN
         IF auth.uid() IS NULL THEN RETURN NEW; END IF;
+
+        -- Innovion projected tenants: authority is Team A's membership directory,
+        -- already enforced by identity_membership_projection_guard(). A Team D
+        -- platform administrator does not approve Innovion memberships.
         SELECT t.company_id INTO tenant_company
           FROM public.platform_tenants t WHERE t.tenant_id = NEW.tenant_id;
-        IF tenant_company IS NOT NULL THEN RETURN NEW; END IF;
-        IF NOT public.is_platform_admin() THEN
+
+        IF tenant_company IS NULL AND NOT public.is_platform_admin() THEN
           RAISE EXCEPTION 'permission denied: tenant membership is granted by a platform administrator';
         END IF;
+
+        IF TG_OP = 'INSERT' THEN NEW.granted_by := auth.uid(); END IF;
+        NEW.updated_at := now();
         RETURN NEW;
       END $g$;`);
 
