@@ -1,6 +1,14 @@
 # Production Deployment Runbook — A/B/D Migration Chain
 
-**Status: APPROVED. Founder GO given 2026-08-18. Execution in progress — see `DEPLOYMENT_LOG.md`.**
+**Status: EXECUTED 2026-08-18. Ledger 0 → 57. §10 verification passed 7/7.**
+**Outcome, findings and the one migration still outstanding: `DEPLOYMENT_LOG.md`.**
+
+This document is retained as the record of what was planned and as the procedure
+for the next deployment. Three things it did not anticipate were found during
+execution and are now folded in: §3.-1 (the direct connection is IPv6-only),
+§3.0 (migration files span three repositories), and `--include-all` in §4.
+A fourth — that a migration recorded as applied may have landed **partially** —
+is the most important lesson and is recorded in §12.
 
 All pre-deployment gates are resolved: A1–A5 and A7–A8 cleared by measurement,
 **A6 waived by the Founder** on the record. §3 and §4 remain outstanding.
@@ -631,6 +639,43 @@ GoTrue token.
 
 ---
 
+## 12. What this runbook did not anticipate
+
+Four things were found only by executing it. The first three are folded into the
+procedure above; the fourth is a lesson about method rather than a step.
+
+**1. The direct connection is IPv6-only.** `db.<ref>.supabase.co` publishes an
+AAAA record and no A record. A deploying machine without routable IPv6 fails at
+DNS before authentication. Use the session pooler — §3.-1.
+
+**2. Migration files span three repositories.** `db push` reads one directory;
+18 of the 56 lived in Team B's and Team D's trees. Without consolidation, 10
+baseline commands fail and 6 migrations never apply — §3.0.
+
+**3. `--include-all` is mandatory** whenever the applied set is not a contiguous
+prefix, which it was not — §4.
+
+**4. A migration recorded as applied may have landed PARTIALLY.** This is the one
+that actually stopped the deployment, and no amount of rehearsal would have caught
+it, because every rehearsal was built from the assumption it disproved.
+
+Team B's `20260727000006` was marked applied on the strength of its function
+existing. The function was there; three of its other objects were not — a column,
+a policy, and an index. The baseline treated the migration as all-or-nothing, so
+every rehearsal modelled a database that did not exist.
+
+**For any future deployment into a hand-applied database, do not infer applied
+state from a marker object.** Diff the real schema against a locally built replica
+— tables, columns, policies, functions, triggers, **indexes**, enum values — and
+treat every difference as a finding. `npm run test:asdeployed` does exactly this
+and is the check that should have run first.
+
+The two artefacts found before the second push were repaired by
+`20260816130000`. The third, the index, was found afterwards by that equivalence
+test and is repaired by `20260819000000`, **which is not yet applied**.
+
+---
+
 ## 11. Approval
 
 | Gate | Status |
@@ -638,9 +683,13 @@ GoTrue token.
 | §8 ledger creation verified (A5) | **COMPLETE** — CLI 2.115.0, §8 |
 | §8 full CLI rehearsal, baseline + push + verify | **COMPLETE** — §8 |
 | §9 data-bearing rehearsal | **COMPLETE** — §7 |
-| Runbook reviewed and approved | **PENDING — Founder** |
-| Verified-restorable backup taken | **PENDING — Founder** |
-| §2 pre-deployment checks pass | **PENDING — at deploy time** |
+| Runbook reviewed and approved | **COMPLETE** — Founder GO, 2026-08-18 |
+| Verified-restorable backup taken | **COMPLETE** — restored to Innovion-Restore-Verification |
+| §2 pre-deployment checks pass | **COMPLETE** — 8/8 gated values matched |
+| §3 ledger baseline | **COMPLETE** — 0 → 29 |
+| §4 push | **COMPLETE** — 35 → 57, after one failure and a repair |
+| §10 post-deployment verification | **COMPLETE** — 7/7 |
+| `20260819000000` index repair | **OUTSTANDING** — prepared and tested, not applied |
 
 Nothing in this runbook has been executed. No production migration, repair,
 push, deployment, credential or DNS change has been made.
