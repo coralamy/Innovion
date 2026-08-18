@@ -135,7 +135,10 @@ export const COMPLETED_REBASES = [
  * and the integration verdict must be re-established, not carried forward.
  */
 export const VERIFIED_AGAINST = {
-  capturedAt: '2026-08-18T12:02:00+10:00',
+  // Re-pinned 12:35 after Team B completed the adjudicated remediation: their
+  // 20260818000200 is now assertion-only (the seven duplicate DROP/CREATE POLICY
+  // pairs removed). Team D unchanged.
+  capturedAt: '2026-08-18T12:35:00+10:00',
   B: {
     '20260727000001_checklist_responses.sql': '05CED7378D37F56B',
     '20260727000002_issue_reports.sql': '6A29B043A4F83398',
@@ -150,7 +153,7 @@ export const VERIFIED_AGAINST = {
     '20260817000001_tenant_authority_hardening.sql': '9BE0D9685F0ECF60',
     '20260817000002_issue_attachment_storage_isolation.sql': '00FAD1093A9F39A4',
     '20260817000003_isolation_policy_consolidation.sql': '5919DC89DB928308',
-    '20260818000200_workforce_data_access_carveouts.sql': 'D2A65EF0A7A0EDF9',
+    '20260818000200_workforce_data_access_carveouts.sql': 'FB81D7CDEAA86073',
   },
   D: {
     '20260807050002_platform_foundation_schema.sql': 'B1FC64E43A34F8C5',

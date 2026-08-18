@@ -989,6 +989,114 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  group('M. WORKFORCE CARVE-OUTS — behaviour, not policy existence');
+  // Team B reported that nothing asserted the public.settings restrictions after
+  // policy ownership moved to Team A. The structural guard now lives in
+  // 20260818000300; these are the behavioural counterparts, because a policy
+  // being present is not the same claim as a worker being unable to write.
+  {
+    const COLLEAGUE = 'ccccccc2-0000-0000-0000-00000000000a';
+    await db.exec(`
+      INSERT INTO public.contractors(id,name,company_id,email)
+        VALUES ('${COLLEAGUE}','Colleague A','${CO_A}','colleagueA@a.test');
+      INSERT INTO public.settings(company_id,company_name,abn)
+        VALUES ('${CO_A}','Tenant A Pty Ltd','11111111111');
+      INSERT INTO public.compliance_items(company_id,title,assigned_to)
+        VALUES ('${CO_A}','White Card','Worker A'),
+               ('${CO_A}','Asbestos Awareness','Colleague A');
+    `);
+
+    // Control: the principal really is workforce-only, or every denial below is
+    // vacuous — a staff user would be denied by nothing and pass anyway.
+    const wfo = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+      `select public.is_workforce_only_user() v`);
+    check(
+      'CONTROL: Worker A really is a workforce-only principal',
+      wfo.rows?.[0]?.v === true,
+      `got ${wfo.rows?.[0]?.v ?? wfo.error}`
+    );
+
+    // settings — READ is the carve-out and must work.
+    check(
+      'a worker READS settings (branding loads on cold start)',
+      (await countAs('authenticated', AS_WORKER_A, 'settings')) === 1
+    );
+    // settings — WRITE stays closed on all three commands.
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `update public.settings set company_name='seized', abn='00000000000' returning id`);
+      check('a worker CANNOT update settings (company name, ABN, currency)',
+        !!r.error || r.rows.length === 0,
+        r.error ? 'denied' : `${r.rows.length} ROWS WRITTEN`);
+    }
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `insert into public.settings(company_id,company_name) values ('${CO_A}','rogue') returning id`);
+      check('a worker CANNOT insert settings', !!r.error, r.error ? 'denied' : 'ROW CREATED');
+    }
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `delete from public.settings returning id`);
+      check('a worker CANNOT delete settings',
+        !!r.error || r.rows.length === 0,
+        r.error ? 'denied' : `${r.rows.length} ROWS DELETED`);
+    }
+    // Control: the settings row is genuinely mutable by someone, so the denials
+    // above are not passing because the row was unreachable to begin with.
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_STAFF_A,
+        `update public.settings set phone='0400000000' returning id`);
+      check('CONTROL: a tenant admin CAN update settings',
+        !r.error && r.rows.length === 1, r.error ?? `${r.rows?.length} rows`);
+    }
+
+    // compliance_items — own record only, and read-only.
+    check(
+      "a worker READS their OWN compliance record",
+      (await countAs('authenticated', AS_WORKER_A, 'compliance_items')) === 1
+    );
+    check(
+      "...and NOT a colleague's",
+      (await countAs('authenticated', AS_WORKER_A, 'compliance_items',
+        `title = 'Asbestos Awareness'`)) === 0
+    );
+    check(
+      'CONTROL: a tenant admin sees both compliance records',
+      (await countAs('authenticated', AS_STAFF_A, 'compliance_items')) === 2
+    );
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `update public.compliance_items set comp_status='compliant' returning id`);
+      check('a worker CANNOT update their own compliance status',
+        !!r.error || r.rows.length === 0,
+        r.error ? 'denied' : `${r.rows.length} ROWS WRITTEN`);
+    }
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `insert into public.compliance_items(company_id,title,assigned_to)
+         values ('${CO_A}','Self-issued ticket','Worker A') returning id`);
+      check('a worker CANNOT insert a compliance item', !!r.error,
+        r.error ? 'denied' : 'ROW CREATED');
+    }
+    {
+      const r = await tryAsRole(db, 'authenticated', AS_WORKER_A,
+        `delete from public.compliance_items returning id`);
+      check('a worker CANNOT delete a compliance item',
+        !!r.error || r.rows.length === 0,
+        r.error ? 'denied' : `${r.rows.length} ROWS DELETED`);
+    }
+    // Cross-tenant: Tenant B's worker sees neither.
+    check(
+      "Tenant B's worker reads no Tenant A settings",
+      (await countAs('authenticated', AS_WORKER_B, 'settings')) === 0
+    );
+    check(
+      "Tenant B's worker reads no Tenant A compliance records",
+      (await countAs('authenticated', AS_WORKER_B, 'compliance_items')) === 0
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   await db.close();
   console.log('\n' + '═'.repeat(78));
   console.log(`  ${pass} passed, ${failures.length} failed`);

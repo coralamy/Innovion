@@ -963,3 +963,68 @@ BEGIN
     RAISE EXCEPTION 'documents DELETE is no longer restricted to a tenant administrator.';
   END IF;
 END $$;
+
+-- ── 6e. SELF-CHECK: this file created every carve-out restriction it owes ──
+--
+-- SCOPE, stated precisely, because the first draft of this guard overstated it.
+--
+-- This checks that sections 4a and 4b above did their job. It catches an
+-- EDITING MISTAKE INSIDE THIS FILE — a carve-out block changed to stop creating
+-- one of its policies. That is a real failure mode and it is Team A's to
+-- prevent, since Team A owns these definitions.
+--
+-- It is NOT a guard against a later removal, and cannot be. An assertion at the
+-- end of the migration that CREATES the policies is unable to detect their
+-- removal: re-running this file recreates them in 4a/4b before this block ever
+-- runs, so the guard heals the state it is meant to catch. That was measured,
+-- not assumed — four removal scenarios were replayed and this guard noticed
+-- none of them.
+--
+-- The guard against later removal lives in 20260818000300, a separate
+-- assertion-only migration stamped last in the combined chain, which observes
+-- the schema without rebuilding it. See that file for the full finding.
+DO $$
+DECLARE
+  spec  text[][] := ARRAY[
+    ['settings',         'INSERT'],
+    ['settings',         'UPDATE'],
+    ['settings',         'DELETE'],
+    ['compliance_items', 'SELECT'],
+    ['compliance_items', 'INSERT'],
+    ['compliance_items', 'UPDATE'],
+    ['compliance_items', 'DELETE']
+  ];
+  i      int;
+  v_tbl  text;
+  v_cmd  text;   -- v_ prefix: `cmd` would shadow pg_policies.cmd below
+  bad    text := '';
+BEGIN
+  -- Team B absent: these carve-outs do not exist and are not required.
+  IF to_regprocedure('public.is_workforce_only_user()') IS NULL THEN
+    RETURN;
+  END IF;
+
+  FOR i IN 1 .. array_length(spec, 1) LOOP
+    v_tbl := spec[i][1];
+    v_cmd := spec[i][2];
+
+    CONTINUE WHEN to_regclass('public.' || v_tbl) IS NULL;
+
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_policies p
+      WHERE p.schemaname = 'public'
+        AND p.tablename  = v_tbl
+        AND p.permissive = 'RESTRICTIVE'
+        AND p.cmd IN (v_cmd, 'ALL')
+        AND COALESCE(p.qual, '') || COALESCE(p.with_check, '') LIKE '%is_workforce_only_user%'
+    ) THEN
+      bad := bad || v_tbl || '.' || v_cmd || ' ';
+    END IF;
+  END LOOP;
+
+  IF bad <> '' THEN
+    RAISE EXCEPTION
+      'Workforce carve-out lost a required restriction: %. A Workforce-only principal would gain that command on a Platform table.',
+      bad;
+  END IF;
+END $$;

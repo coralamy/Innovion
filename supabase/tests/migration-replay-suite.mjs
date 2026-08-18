@@ -223,6 +223,7 @@ async function main() {
     '20260817007000_platform_operator_scoping.sql',
     '20260817008000_secdef_search_path_hardening.sql',
     '20260818000100_abd_authority_reconciliation.sql',
+    '20260818000300_workforce_carveout_assertions.sql',
   ];
   for (const file of GUARD_MIGRATIONS) {
     const err = await reapplyOnFreshFinalSchema(join(TREES.A, file));
@@ -309,6 +310,86 @@ async function main() {
       bad.map((m) => `${m.file}: ${m.error}`).join(' | ')
     );
     await d3.close();
+  }
+
+  // 5b-bis. CARVE-OUT INTEGRITY (guard 6e).
+  //     Team B reported that nothing asserted the public.settings restrictions
+  //     once policy ownership moved to Team A. Confirmed, and wider than
+  //     reported: the compliance_items write denials were unguarded too, because
+  //     Team B's guard 3b is satisfied by the own-only SELECT policy alone.
+  //     Each removal below must now abort Team A's migration by name.
+  {
+    const assertions = join(TREES.A, '20260818000300_workforce_carveout_assertions.sql');
+    const assertSql = await readFile(assertions, 'utf8');
+    // Deliberately NOT 20260818000100: re-running that file recreates the
+    // policies in sections 4a/4b before its own §6e check runs, so it heals the
+    // removal and reports nothing. Measured, not assumed — this is why
+    // 20260818000300 exists as a separate assertion-only migration.
+    const REMOVALS = [
+      { label: 'settings UPDATE denial alone', expect: 'settings.UPDATE',
+        sql: `DROP POLICY "settings_workforce_no_update" ON public.settings;` },
+      { label: 'settings all three write denials', expect: 'settings.INSERT',
+        sql: `DROP POLICY "settings_workforce_readonly"  ON public.settings;
+              DROP POLICY "settings_workforce_no_update" ON public.settings;
+              DROP POLICY "settings_workforce_no_delete" ON public.settings;` },
+      { label: 'compliance_items write denials, own-only SELECT retained',
+        expect: 'compliance_items.UPDATE',
+        sql: `DROP POLICY "compliance_items_workforce_readonly"  ON public.compliance_items;
+              DROP POLICY "compliance_items_workforce_no_update" ON public.compliance_items;
+              DROP POLICY "compliance_items_workforce_no_delete" ON public.compliance_items;` },
+      { label: 'compliance_items own-only SELECT', expect: 'compliance_items.SELECT',
+        sql: `DROP POLICY "compliance_items_workforce_own_only" ON public.compliance_items;` },
+      // Widening rather than removal: keep a restrictive SELECT policy, but stop
+      // scoping it to the caller's own record. Passes a per-command check;
+      // every worker would read every colleague's compliance history.
+      { label: 'compliance_items SELECT widened off get_my_contractor_id()',
+        expect: 'own record',
+        sql: `DROP POLICY "compliance_items_workforce_own_only" ON public.compliance_items;
+              CREATE POLICY "compliance_items_workforce_own_only" ON public.compliance_items
+                AS RESTRICTIVE FOR SELECT TO authenticated
+                USING (true OR NOT public.is_workforce_only_user());` },
+    ];
+    for (const r of REMOVALS) {
+      const { db: d5 } = await bootIntegrated({ quiet: true });
+      await d5.exec(r.sql);
+      let err = null;
+      try {
+        await d5.exec(assertSql);
+      } catch (e) {
+        err = e.message;
+      }
+      check(
+        `20260818000300 aborts on: ${r.label}`,
+        Boolean(err && err.includes(r.expect)),
+        err ? clip(err) : 'IT PASSED — the removal went unnoticed'
+      );
+      await d5.close();
+    }
+    // Control: with nothing removed, the same re-run must pass — so the aborts
+    // above are caused by the removal and not by re-running the file.
+    const clean = await reapplyOnFreshFinalSchema(assertions);
+    check(
+      'CONTROL: with nothing removed, 20260818000300 passes',
+      clean === null,
+      clip(clean)
+    );
+    // Control: 20260818000100 must NOT be relied on for this — it heals the
+    // removal by recreating the policy. Asserting the limitation keeps the
+    // ownership split honest if someone later moves the check back.
+    const { db: d6 } = await bootIntegrated({ quiet: true });
+    await d6.exec(`DROP POLICY "settings_workforce_no_update" ON public.settings;`);
+    let healed = null;
+    try {
+      await d6.exec(await readFile(join(TREES.A, '20260818000100_abd_authority_reconciliation.sql'), 'utf8'));
+    } catch (e) {
+      healed = e.message;
+    }
+    check(
+      'CONTROL: 20260818000100 §6e cannot detect a later removal (it recreates it) — which is why 300 exists',
+      healed === null,
+      healed ? `it aborted: ${clip(healed)}` : 'recreated and passed, as documented'
+    );
+    await d6.close();
   }
 
   // 5c. PIECEMEAL APPLICATION MUST FAIL.
