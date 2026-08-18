@@ -1,46 +1,68 @@
 -- ============================================================================
--- Innovion Team A — Purge fictitious tenant-less seed data
+-- Innovion Team A - Purge fictitious tenant-less seed rows
 -- Timestamp: 20260817003500
 -- ----------------------------------------------------------------------------
--- DEFECT REMEDIATED (V106 production-data audit, doc 04):
---   Migration 20260726090000_innovion_extended.sql ends with a large
+-- ORIGINAL PURPOSE. An early migration carried a mock-data block of the form
 --   `DO $$ ... EXCEPTION WHEN OTHERS THEN RAISE NOTICE 'Mock data insertion
---   failed: %' ... END $$` block that seeds fictitious demonstration records —
---   named individuals ("Sophie Walsh", "Jessica Thompson"), a named real-world
---   venue ("Crown Casino Complex", "Westfield Shopping Centre"), invented ABNs,
---   contact e-mail addresses and phone numbers, incident reports and financial
---   figures — into documents, incidents, inventory, vehicles, companies,
---   notifications, compliance_items and settings.
+--   skipped' ... $$`
+-- which seeded demonstration rows with no tenant. Those rows are invisible to
+-- every policy once the null-tenant escape hatch is closed by 20260817004000,
+-- so they are unreachable clutter, and this migration removed them.
 --
---   Every one of those rows is inserted WITHOUT a company_id. That is what made
---   them globally visible: combined with the `company_id IS NULL` disjunct in
---   the legacy `company_access_*` policies (removed in 20260817004000), they
---   were readable by every tenant and by unauthenticated callers.
---
---   The migration is still in the chain, so a fresh deployment re-seeds them.
---   Verified locally: 6 fictitious `documents` rows and 1 fictitious `settings`
---   row present immediately after a clean migration run.
---
---   The historical migration is deliberately left unedited — it is applied
---   audit evidence. This migration neutralises its effect deterministically,
---   for both existing and freshly-created databases, because migrations run in
---   timestamp order.
---
--- SAFETY:
---   Only rows with NO tenant are removed. After 20260817004000 no policy can
---   create such a row, so this cannot delete legitimate tenant data. Counts are
---   reported so the operation is auditable in the migration log.
---
--- NOT A PRODUCTION OPERATION: authoring this migration is not the same as
---   running it against the live database. Applying it to production remains a
---   Founder-authorised deployment step.
 -- ============================================================================
+-- REWRITTEN AFTER THE DATA-BEARING REHEARSAL. IT WAS DESTROYING REAL DATA.
+-- ============================================================================
+--
+-- The original predicate for the tenant table was:
+--
+--     DELETE FROM public.companies WHERE owner_id IS NULL;
+--
+-- with the reasoning that "a real tenant always has an owner_id". That
+-- reasoning is correct and the conclusion drawn from it is still wrong, because
+-- public.companies is not only the tenant table. Its company_type enum is
+-- (client, contractor, partner) and DEFAULTS TO 'client': the table doubles as
+-- the customer directory. A customer record legitimately has no owner_id,
+-- because nobody signs in as a customer.
+--
+-- Measured, on a realistic estate seeded onto a faithful copy of the live
+-- baseline - 40 tenants and 120 customer records:
+--
+--     companies                     160 ->  40   (-120)
+--     companies(owner_id IS NULL)   120 ->   0   (-120)
+--
+-- Every customer record was destroyed. Against production that is unrecoverable
+-- commercial data, deleted silently, in the middle of a security deployment.
+--
+-- ── The distinction that actually matters ──────────────────────────────────
+--
+-- CHILD TABLES (documents, jobs, clients, ... ) with company_id IS NULL are
+--   genuinely unreachable. No policy can return them once the null-tenant escape
+--   is closed, and no policy could ever have created them for a real tenant -
+--   they were only ever visible through the escape hatch itself, to everyone.
+--   These are the mock rows, and removing them is this migration's purpose. The
+--   bare schema carries 6 such documents and 1 settings row from the early
+--   migrations' own seed blocks.
+--
+-- public.companies with owner_id IS NULL is a DIFFERENT THING ENTIRELY, and
+--   conflating the two is what made the original version destructive. Such a row
+--   is a CUSTOMER RECORD. It has no owner because nobody signs in as a customer.
+--   It is not unreachable, not invisible, and not rubbish.
+--
+--   It is also not a security problem: a customer record has no members, so it
+--   grants nobody anything, and 20260818000500 already excludes it from the
+--   A-to-D tenant directory. There is no reason to delete it and every reason
+--   not to.
+--
+-- So: child tables are purged, public.companies is LEFT ALONE and reported.
+-- Nothing in this migration can now destroy commercial data.
 
 DO $$
 DECLARE
-  t       text;
-  removed bigint;
-  report  text := '';
+  t        text;
+  n        bigint;
+  removed  bigint;
+  report   text := '';
+  ownerless bigint;
 BEGIN
   FOREACH t IN ARRAY ARRAY[
     'documents','incidents','inventory','vehicles','notifications',
@@ -48,31 +70,29 @@ BEGIN
     'clients','employees','sites','settings'
   ] LOOP
     IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
-
     EXECUTE format('DELETE FROM public.%I WHERE company_id IS NULL', t);
     GET DIAGNOSTICS removed = ROW_COUNT;
-    IF removed > 0 THEN
-      report := report || format('%s=%s ', t, removed);
-    END IF;
+    IF removed > 0 THEN report := report || format('%s=%s ', t, removed); END IF;
   END LOOP;
 
-  -- `companies` is the tenant table itself; fictitious client/partner records
-  -- were seeded there with no owner. A real tenant always has an owner_id,
-  -- because companies_insert enforces owner_id = auth.uid().
-  DELETE FROM public.companies WHERE owner_id IS NULL;
-  GET DIAGNOSTICS removed = ROW_COUNT;
-  IF removed > 0 THEN
-    report := report || format('companies(ownerless)=%s ', removed);
+  IF report = '' THEN
+    RAISE NOTICE 'No tenant-less child rows present.';
+  ELSE
+    RAISE NOTICE 'Purged tenant-less child rows: %', report;
   END IF;
 
-  IF report = '' THEN
-    RAISE NOTICE 'No fictitious tenant-less rows present.';
-  ELSE
-    RAISE NOTICE 'Purged fictitious tenant-less rows: %', report;
+  -- Reported, never deleted. See above.
+  SELECT count(*) INTO ownerless FROM public.companies WHERE owner_id IS NULL;
+  IF ownerless > 0 THEN
+    RAISE WARNING
+      'public.companies has % row(s) with no owner_id. These are CUSTOMER RECORDS and are deliberately NOT deleted. '
+      'An earlier version of this migration removed them, which destroyed commercial data.',
+      ownerless;
   END IF;
 END $$;
 
 -- ── Regression guard ────────────────────────────────────────────────────────
+-- Child tables only. public.companies is deliberately out of scope: see above.
 DO $$
 DECLARE t text; n bigint; bad text := '';
 BEGIN
@@ -81,6 +101,7 @@ BEGIN
     'compliance_items','contractors','jobs','time_entries','checklists',
     'clients','employees','sites'
   ] LOOP
+    IF to_regclass('public.' || t) IS NULL THEN CONTINUE; END IF;
     EXECUTE format('SELECT count(*) FROM public.%I WHERE company_id IS NULL', t) INTO n;
     IF n > 0 THEN bad := bad || format('%s=%s ', t, n); END IF;
   END LOOP;
