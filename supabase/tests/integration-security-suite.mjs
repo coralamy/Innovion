@@ -1097,6 +1097,182 @@ async function main() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  group('N. A→D PROJECTION REFRESH — the ruling, and what Team D must change');
+  // Runs last: it patches Team D's functions in-session to prove the ruling is
+  // achievable, which would contaminate anything after it.
+  {
+    // ── The directory must list tenants, not customer records ───────────────
+    const CUST = 'cccccccc-0000-0000-0000-0000000000c1';
+    await db.exec(`
+      INSERT INTO public.companies(id,name,comp_status)
+        VALUES ('${CUST}','Acme Cleaning Customer Pty Ltd','inactive');`);
+    check(
+      'a customer record on public.companies is NOT a Platform tenant',
+      (await q(`select count(*)::int c from public.innovion_tenant_directory
+                 where company_id = '${CUST}'`))[0].c === 0,
+      'company_type defaults to client; the table holds customer rows too'
+    );
+    check(
+      'CONTROL: real tenants are still listed',
+      (await q(`select count(*)::int c from public.innovion_tenant_directory`))[0].c === 2,
+      'if this drops, the scoping filter is too tight and admins lose Platform authority'
+    );
+    check(
+      'is_active is constant true — Team A has no suspension state (documented, not inferred)',
+      (await q(`select bool_and(is_active) a from public.innovion_tenant_directory`))[0].a === true
+    );
+
+    // ── Blocked state against Team D's tree as it stands ────────────────────
+    const armed = async () =>
+      (await q(`select count(*)::int c from pg_trigger
+                 where tgname like 'innovion_tenancy_projection%'`))[0].c;
+    check(
+      'against the current Team D tree the refresh trigger is NOT armed',
+      (await armed()) === 0,
+      'correct: arming it would abort every tenant-admin role change'
+    );
+    check(
+      'CONTROL: the projection really does refuse a tenant-admin JWT',
+      Boolean(
+        (await tryAsRole(db, 'authenticated', AS_STAFF_A,
+          `select * from public.platform_project_innovion_tenancy()`)).error
+      ),
+      'if it did not refuse, the trigger would already be safe to arm'
+    );
+
+    // ── Apply the two changes required of Team D, then re-run Team A's file ──
+    const projSrc = (await q(
+      `select pg_get_functiondef(to_regprocedure('public.platform_project_innovion_tenancy()')) d`))[0].d;
+    const projPatched = projSrc.replace(
+      'IF auth.uid() IS NOT NULL AND NOT public.is_platform_admin() THEN',
+      'IF auth.uid() IS NOT NULL AND pg_trigger_depth() = 0 AND NOT public.is_platform_admin() THEN'
+    );
+    check('Team D change 1 is a single added conjunct', projPatched !== projSrc);
+    await db.exec(projPatched);
+
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.identity_membership_guard()
+      RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $g$
+      DECLARE tenant_company UUID;
+      BEGIN
+        IF auth.uid() IS NULL THEN RETURN NEW; END IF;
+        SELECT t.company_id INTO tenant_company
+          FROM public.platform_tenants t WHERE t.tenant_id = NEW.tenant_id;
+        IF tenant_company IS NOT NULL THEN RETURN NEW; END IF;
+        IF NOT public.is_platform_admin() THEN
+          RAISE EXCEPTION 'permission denied: tenant membership is granted by a platform administrator';
+        END IF;
+        RETURN NEW;
+      END $g$;`);
+
+    const { readFile: rf } = await import('node:fs/promises');
+    await db.exec(await rf('./supabase/migrations/20260818000600_tenancy_projection_refresh.sql', 'utf8'));
+
+    check(
+      'with both Team D changes, Team A 20260818000600 ARMS ITSELF on re-run',
+      (await armed()) === 2,
+      `${await armed()} trigger(s) — no manual step, no coordination`
+    );
+    check(
+      'and the triggers are STATEMENT-level, not per row',
+      (await q(`select count(*)::int c from pg_trigger
+                 where tgname like 'innovion_tenancy_projection%' and (tgtype & 1) <> 0`))[0].c === 0
+    );
+
+    // ── Grant propagates, via the REAL client write path ────────────────────
+    // Team A has no admin-adds-another-user path: user_roles_select_own means an
+    // admin cannot even list their team from the client, and the only two client
+    // writes in the codebase are self-service —
+    //   src/app/onboarding/page.tsx:435          owner bootstraps their own admin role
+    //   src/app/accept-invite/…:104              invitee inserts their own role
+    // Both run as an authenticated, non-platform-admin principal, which is
+    // precisely the caller Team D's guards reject. Using the onboarding path
+    // here, because an admin-inserts-for-another-user test would be asserting a
+    // capability Team A deliberately does not offer.
+    const NEWOWNER = '11111111-0000-0000-0000-0000000000b9';
+    const NEWCO = 'aaaaaaaa-0000-0000-0000-0000000000b9';
+    // Clear any lingering session claims: creating a company fires Team A's
+    // create_trial_subscription() trigger, whose set_company_id_from_user()
+    // guard refuses when a DIFFERENT tenant's JWT is still set on the session.
+    await db.exec('RESET ROLE');
+    await db.query(`select set_config('request.jwt.claims','',false)`);
+    await db.exec(`
+      INSERT INTO auth.users(id,email,email_confirmed_at)
+        VALUES ('${NEWOWNER}','newowner@b9.test',now());
+      INSERT INTO public.companies(id,name,owner_id)
+        VALUES ('${NEWCO}','Onboarding Tenant','${NEWOWNER}');`);
+    const memberships = async (u) =>
+      (await q(`select count(*)::int c from public.identity_tenant_memberships where user_id='${u}'`))[0].c;
+
+    const grant = await tryAsRole(db, 'authenticated', claims(NEWOWNER),
+      `insert into public.user_roles(user_id,company_id,role)
+       values ('${NEWOWNER}','${NEWCO}','admin') returning role`);
+    check('the onboarding self-service write still succeeds with the trigger armed',
+      !grant.error, grant.error ?? 'inserted');
+    check('...and the grant reached Team D in the same transaction',
+      (await memberships(NEWOWNER)) === 1, `${await memberships(NEWOWNER)} membership(s)`);
+
+    // ── Revocation propagates — the direction that actually matters ─────────
+    // The victim's authority must come ONLY from user_roles. Deleting the role
+    // row of a principal who is also companies.owner_id would correctly leave
+    // the membership standing, since ownership is a separate authority source —
+    // asserted immediately below so that property is pinned rather than assumed.
+    const VICTIM = '11111111-0000-0000-0000-0000000000ba';
+    await db.exec('RESET ROLE');
+    await db.query(`select set_config('request.jwt.claims','',false)`);
+    await db.exec(`
+      INSERT INTO auth.users(id,email,email_confirmed_at)
+        VALUES ('${VICTIM}','victim@b9.test',now());
+      INSERT INTO public.user_roles(user_id,company_id,role)
+        VALUES ('${VICTIM}','${NEWCO}','manager');`);
+    check('a role-only principal is projected into Team D',
+      (await memberships(VICTIM)) === 1, `${await memberships(VICTIM)} membership(s)`);
+
+    // Revoked server-side, which is how Team A actually does user management:
+    // there is no client-side admin-revokes-another-user path (user_roles_delete
+    // matched 0 rows for a tenant admin, and user_roles_select_own means an admin
+    // cannot even list their team). That is pre-existing Team A behaviour and not
+    // this ruling's subject — what is asserted here is that the REMOVAL
+    // propagates, whoever performs it.
+    await db.exec('RESET ROLE');
+    await db.query(`select set_config('request.jwt.claims','',false)`);
+    const revoke = await db.query(
+      `delete from public.user_roles where user_id='${VICTIM}' returning role`);
+    // Strict: a DELETE matching zero rows returns no error, so a !error check
+    // would pass while nothing had been revoked, and the propagation check below
+    // would then be blamed for a failure that belongs here.
+    check('exactly one role row is revoked', revoke.rows.length === 1,
+      `${revoke.rows.length} rows deleted`);
+    check('...and Team D drops the membership immediately, with no staleness window',
+      (await memberships(VICTIM)) === 0,
+      'this is the case a scheduler would leave open for its whole interval');
+
+    // The contract property that made the first draft of this test wrong.
+    check(
+      'CONTRACT: revoking a role does NOT revoke ownership-derived membership',
+      (await memberships(NEWOWNER)) === 1,
+      'companies.owner_id is an independent authority source; the owner stays tenant_owner'
+    );
+
+    // ── Fail-closed ─────────────────────────────────────────────────────────
+    await db.exec(`
+      CREATE OR REPLACE FUNCTION public.platform_project_innovion_tenancy()
+      RETURNS TABLE (tenants_upserted INTEGER, tenants_removed INTEGER,
+                     memberships_upserted INTEGER, memberships_removed INTEGER)
+      LANGUAGE plpgsql AS $f$
+      BEGIN RAISE EXCEPTION 'simulated projection failure'; END $f$;`);
+    // VICTIM's role row was just revoked, so re-adding it is a clean probe.
+    const blocked = await tryAsRole(db, 'authenticated', claims(NEWOWNER),
+      `insert into public.user_roles(user_id,company_id,role)
+       values ('${VICTIM}','${NEWCO}','manager') returning role`);
+    check('FAIL-CLOSED: a projection failure aborts the Team A authority change',
+      Boolean(blocked.error), blocked.error ? 'aborted' : 'THE WRITE SUCCEEDED — A and D would diverge');
+    check('...and the Team A row was rolled back, so A and D still agree',
+      (await q(`select count(*)::int c from public.user_roles where user_id='${VICTIM}'`))[0].c === 0
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   await db.close();
   console.log('\n' + '═'.repeat(78));
   console.log(`  ${pass} passed, ${failures.length} failed`);

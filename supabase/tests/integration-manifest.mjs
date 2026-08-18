@@ -135,10 +135,16 @@ export const COMPLETED_REBASES = [
  * and the integration verdict must be re-established, not carried forward.
  */
 export const VERIFIED_AGAINST = {
-  // Re-pinned 12:35 after Team B completed the adjudicated remediation: their
-  // 20260818000200 is now assertion-only (the seven duplicate DROP/CREATE POLICY
-  // pairs removed). Team D unchanged.
-  capturedAt: '2026-08-18T12:35:00+10:00',
+  // 12:35 — Team B completed the adjudicated remediation: their 20260818000200
+  //         is now assertion-only (seven duplicate DROP/CREATE POLICY pairs
+  //         removed).
+  // 13:05 — Team D implemented the A→D tenancy projection ruling and added
+  //         20260818000400_innovion_tenancy_projection.sql. Their
+  //         platform_foundation_schema is re-stamped to 20260807050002 with its
+  //         content unchanged: the hash below is byte-identical to the one
+  //         recorded when the file was named …045000 and again when it was
+  //         named …050000, which confirms the re-stamp was a rename only.
+  capturedAt: '2026-08-18T13:05:00+10:00',
   B: {
     '20260727000001_checklist_responses.sql': '05CED7378D37F56B',
     '20260727000002_issue_reports.sql': '6A29B043A4F83398',
@@ -159,6 +165,7 @@ export const VERIFIED_AGAINST = {
     '20260807050002_platform_foundation_schema.sql': 'B1FC64E43A34F8C5',
     '20260810000000_platform_event_bus_runtime.sql': '1739ACD4E8D5C33E',
     '20260817000500_platform_authority_hardening.sql': 'C616FC6AB718271E',
+    '20260818000400_innovion_tenancy_projection.sql': '8A682ACF02052E50',
   },
 };
 
